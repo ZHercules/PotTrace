@@ -13,7 +13,9 @@ public sealed class SessionTracker
 
     public EngineUpdate Apply(PlaybackEvent e)
     {
-        if (sequences.GetValueOrDefault(e.InstanceId)>=e.Sequence) return EngineUpdate.Empty;
+        long lastSequence=sequences.GetValueOrDefault(e.InstanceId);
+        if (lastSequence>=e.Sequence) return EngineUpdate.Empty;
+        if(lastSequence>0 && e.Sequence!=lastSequence+1)e=e with {Quality=ObservationQuality.Gap};
         sequences[e.InstanceId]=e.Sequence;
         if(!enabled) return EngineUpdate.Empty;
         var changed=new List<ActiveSession>();
@@ -29,7 +31,7 @@ public sealed class SessionTracker
             current=new ActiveSession
             {
                 Record=new SessionRecord {SessionId=Guid.NewGuid(),InstanceId=e.InstanceId,MediaEpoch=e.MediaEpoch.Value,
-                    SourceId=MovieIdentity.SourceId(e.SourcePath),SourcePath=e.SourcePath,MovieKey=MovieIdentity.GetKey(e.SourcePath),
+                    SourceId=MovieIdentity.SourceId(e.SourcePath,e.SourceVersion),SourcePath=e.SourcePath,MovieKey=MovieIdentity.GetKey(e.SourcePath),
                     StartedUtc=e.ObservedAtUtc,Mode=mode,TimeZoneId=zone.Id}, Last=e
             };
             active[e.InstanceId]=current;
@@ -46,7 +48,7 @@ public sealed class SessionTracker
                 double rate=previous.Rate??1;
                 long delta=to-from;
                 if(delta>0 && Math.Abs(delta-dt*rate)<=Math.Max(500,dt*rate*.20))
-                    played=Math.Min(dt,(long)Math.Round(delta/rate));
+                    played=dt;
             }
             current.Record=current.Record with {StayMs=current.Record.StayMs+stay,PlayedMs=current.Record.PlayedMs+played};
             current.Record=current.Record with {IsValid=current.Record.StayMs>10000};
@@ -87,6 +89,8 @@ public sealed class SessionTracker
         Close(state,state.Last,"Disconnected");return Snapshot([state]);
     }
     public IReadOnlyList<Guid> ActiveInstances=>active.Keys.ToArray();
+    public void DiscardSessions(IReadOnlySet<Guid> sessionIds)
+    {foreach(var pair in active.Where(x=>sessionIds.Contains(x.Value.Record.SessionId)).ToArray())active.Remove(pair.Key);}
 
     private void AddDays(ActiveSession state,DateTimeOffset start,long span,long stay,long played)
     {

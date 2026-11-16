@@ -14,6 +14,7 @@ public sealed record PlaybackEvent
     public DateTimeOffset ObservedAtUtc { get; init; } = DateTimeOffset.UtcNow;
     public long MonotonicMs { get; init; }
     public string? SourcePath { get; init; }
+    public string? SourceVersion { get; init; }
     public long? PositionMs { get; init; }
     public long? DurationMs { get; init; }
     public PlaybackState State { get; init; }
