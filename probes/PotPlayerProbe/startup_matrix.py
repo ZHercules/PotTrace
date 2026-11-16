@@ -6,9 +6,12 @@ ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser();parser.add_argument('--runs',type=int,default=6);parser.add_argument('--stamp',action='store_true');parser.add_argument('--dwell',type=float,default=11)
 parser.add_argument('--api',choices=['identity','thread'])
 parser.add_argument('--workers',choices=['none','observer','sender','both'],default='both')
+parser.add_argument('--open-delay-ms',type=int,default=0,help='Fixture-only delay before the Open identity notification')
+parser.add_argument('--resume-after-check',action='store_true',help='Probe resumption only after a committed session exists')
 args=parser.parse_args();EXE=Path(os.environ.get('POTTRACE_TEST_PLAYER',str(ROOT/'out/player/PotPlayerMini64.exe'))).resolve()
 if not EXE.is_relative_to((ROOT/'out').resolve()):raise SystemExit('Only an isolated player under this repository out/ directory may be modified')
 if args.runs<1 or args.dwell<=0:raise SystemExit('runs and dwell must be positive')
+if not 0<=args.open_delay_ms<=10000:raise SystemExit('open delay must be 0..10000 ms')
 EXT=EXE.parent/'Extension/Playback/Statistics'
 script=EXT/'PlaybackStatistics - PotTrace.as';before=script.read_bytes();ini=EXT/'pottrace-bridge.ini';config=ini.read_bytes()
 clock=ctypes.windll.kernel32.GetTickCount64;clock.restype=ctypes.c_ulonglong
@@ -20,6 +23,10 @@ def rows(db):
     except sqlite3.OperationalError:return []
 try:
     source=before.decode('utf-8')
+    if args.open_delay_ms:
+        original='void PlaybackOpen(const string &in path) { Send("Open",path); }'
+        if original not in source:raise RuntimeError('Expected fixture PlaybackOpen entry not found')
+        source=source.replace(original,'void PlaybackOpen(const string &in path) { HostIncTimeOut('+str(args.open_delay_ms+2000)+'); HostSleep('+str(args.open_delay_ms)+'); Send("Open",path); }')
     if args.stamp:source=source.replace(' + position + ', ' + HostGetTickCount() + ')
     if args.api=='identity':source=source.replace('Send("Ready", "");','Send("Ready", HostGetPlayingFileName());')
     if args.api=='thread':
@@ -43,6 +50,20 @@ try:
             ready=clock();u.SendMessageW(h,0x400,0x5007,1);paused=clock()
             time.sleep(args.dwell);checked=clock();observed=rows(data/'pottrace.db')
             report={'run':run,'visible':bool(run%2==0),'start':start,'ready':ready-start,'paused':paused-start,'checked':checked-start,'valid':sum(s['IsValid'] for s in observed),'stay':[s['StayMs'] for s in observed],'played':[s['PlayedMs'] for s in observed]}
+            report['injected_open_delay_ms']=args.open_delay_ms
+            report['paused_wait_ms']=checked-paused
+            report['minimum_unrecorded_pause_ms']=max(0,checked-paused-sum(s['StayMs'] for s in observed))
+            if args.resume_after_check:
+                expected=str(ROOT/'out/fixtures/观看区间.avi')
+                current=[s for s in observed if s['SourcePath']==expected and s.get('EndedUtc') is None]
+                if len(current)!=1:raise AssertionError('No unambiguous committed current session; will not resume')
+                oldplayed=current[0]['PlayedMs'];oldpos=u.SendMessageW(h,0x400,0x5004,0)
+                if u.SendMessageW(h,0x400,0x5006,0)!=1:raise AssertionError('Expected paused state before ready-triggered resume')
+                report['resume_requested']=clock()-start;u.SendMessageW(h,0x400,0x5007,2);time.sleep(3)
+                report['resumed_state']=u.SendMessageW(h,0x400,0x5006,0);u.SendMessageW(h,0x400,0x5007,1);time.sleep(.8)
+                after=rows(data/'pottrace.db');same=[s for s in after if s['SessionId']==current[0]['SessionId']]
+                report['resume_played_ms']=same[0]['PlayedMs']-oldplayed
+                report['resume_media_ms']=u.SendMessageW(h,0x400,0x5004,0)-oldpos
             results.append(report);print(json.dumps(report),flush=True)
         finally:
             if h:u.SendMessageW(h,16,0,0)
