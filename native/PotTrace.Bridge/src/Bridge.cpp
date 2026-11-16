@@ -25,8 +25,19 @@ struct State {
  long long seq=0,pos=0,duration=0,ratePos=0;ULONGLONG last=0,rateAt=0;double rate=1;int warmSamples=0;std::string playState="Unknown";bool active=false;HWND hwnd=nullptr;
 };
 State* state=nullptr;std::mutex initGate;
+#ifdef _DEBUG
+void testTrace(const wchar_t* variable,std::string_view message){
+ wchar_t file[32768];DWORD n=GetEnvironmentVariableW(variable,file,32768);if(!n||n>=32768)return;
+ HANDLE stream=CreateFileW(file,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+ if(stream!=INVALID_HANDLE_VALUE){auto line=std::to_string(GetTickCount64())+"\t"+std::string(message)+"\n";DWORD written;WriteFile(stream,line.data(),static_cast<DWORD>(line.size()),&written,nullptr);CloseHandle(stream);}
+}
+#endif
 BOOL CALLBACK findWindow(HWND h,LPARAM arg){DWORD pid=0;GetWindowThreadProcessId(h,&pid);if(pid!=GetCurrentProcessId())return TRUE;wchar_t cls[80];GetClassNameW(h,cls,80);if(wcscmp(cls,L"PotPlayer64")==0){*reinterpret_cast<HWND*>(arg)=h;return FALSE;}return TRUE;}
+#ifdef POTTRACE_BRIDGE_TEST
+bool query(HWND h,WPARAM key,long long& value);
+#else
 bool query(HWND h,WPARAM key,long long& value){DWORD_PTR result=0;if(!h||!SendMessageTimeoutW(h,WM_USER,key,0,SMTO_ABORTIFHUNG|SMTO_BLOCK,80,&result))return false;value=static_cast<LONG_PTR>(result);return true;}
+#endif
 void emit(State& s,std::string kind,ULONGLONG now,const std::string& stamp,bool gap=false){
  if(s.suppressed)return;
  std::lock_guard lock(s.outGate);
@@ -50,6 +61,9 @@ void sample(State& s,ULONGLONG now){
  if(!query(s.hwnd,0x5006,status)||!query(s.hwnd,0x5004,pos)||!query(s.hwnd,0x5002,total)){
   if(s.active)emit(s,"Gap",now,utc(),true);s.last=now;return;
  }
+#ifdef _DEBUG
+ testTrace(L"POTTRACE_TEST_RAW_TRACE","Sample\t"+std::to_string(status)+"\t"+std::to_string(pos)+"\t"+std::to_string(total));
+#endif
  if(!s.active&&s.path.empty())return;
  if(!s.active){
   if((status!=1&&status!=2)||total<=0)return;
@@ -88,13 +102,15 @@ void callback(State& s,const Raw& raw){
  ULONGLONG now=std::max(raw.at,s.last);
  if(kind=="Open"){
   if(s.active){emit(s,"MediaClosed",now,raw.stamp);s.active=false;}
-  s.path=path;s.epoch=guid();s.rate=1;s.pos=0;s.last=now;s.playState="Unknown";emit(s,"MediaOpened",now,raw.stamp);return;
+  s.path=path;s.epoch=guid();s.rate=1;s.pos=0;s.duration=0;s.last=now;s.playState="Unknown";emit(s,"MediaOpened",now,raw.stamp);return;
  }
  if(kind=="Start"){
   if(s.active&&s.path==path){s.duration=total;return;}
   if(s.epoch.empty()||s.path!=path){if(s.active)emit(s,"MediaClosed",now,raw.stamp);s.epoch=guid();}
-  s.path=path;s.duration=total;s.pos=0;query(s.hwnd,0x5004,s.pos);s.playState="Playing";s.active=true;s.last=now;s.rateAt=now;s.ratePos=s.pos;s.warmSamples=0;
-  emit(s,"MediaOpened",now,raw.stamp);return;
+  s.path=path;s.duration=total;s.pos=0;s.playState="Unknown";s.active=false;s.last=now;s.rate=1;
+  // Start can arrive after Pause or even Stop. Only a current successful
+  // observation may activate the session; a timeout leaves it pending.
+  sample(s,std::max(now,GetTickCount64()));return;
  }
  if(!s.active||s.path!=path){if(kind=="Close"&&s.path==path)s.path.clear();return;}
  if(kind=="Time")return;
@@ -168,13 +184,23 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* byte
  state=new State;state->folder=std::move(folder);
  // CreateThread does not wait for the thread's CRT startup handshake. Waiting
  // here can stall the host's extension dispatch while it holds internal locks.
- HANDLE observer=CreateThread(nullptr,0,observeEntry,state,0,nullptr);
- HANDLE sender=CreateThread(nullptr,0,transportEntry,state,0,nullptr);
+ bool observeEnabled=true,sendEnabled=true;
+#ifdef _DEBUG
+ wchar_t workers[64];if(GetEnvironmentVariableW(L"POTTRACE_TEST_WORKERS",workers,64)){
+  observeEnabled=wcscmp(workers,L"sender")==0||wcscmp(workers,L"none")==0?false:true;
+  sendEnabled=wcscmp(workers,L"observer")==0||wcscmp(workers,L"none")==0?false:true;
+ }
+#endif
+ HANDLE observer=observeEnabled?CreateThread(nullptr,0,observeEntry,state,0,nullptr):nullptr;
+ HANDLE sender=sendEnabled?CreateThread(nullptr,0,transportEntry,state,0,nullptr):nullptr;
  if(observer)CloseHandle(observer);if(sender)CloseHandle(sender);
- if(!observer||!sender){state->stop=true;return -3;}return 0;
+ if((observeEnabled&&!observer)||(sendEnabled&&!sender)){state->stop=true;return -3;}return 0;
 }
 extern "C" __declspec(dllexport) int32_t PotTrace_Enqueue(const uint8_t* bytes,uint32_t length){
  auto p=state;if(!p||p->stop||!bytes||length>262144)return -1;
+#ifdef _DEBUG
+ testTrace(L"POTTRACE_TEST_RAW_TRACE",std::string_view(reinterpret_cast<const char*>(bytes),length));
+#endif
  std::lock_guard lock(p->rawGate);if(p->raw.size()>=4096||p->rawBytes+length>8*1024*1024){p->rawGap=true;return 1;}
  p->raw.push_back({std::string(reinterpret_cast<const char*>(bytes),length),GetTickCount64(),utc()});p->rawBytes+=length;return 0;
 }
