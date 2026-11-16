@@ -7,6 +7,8 @@ public sealed class IngestionWriter
 {
     private readonly Database database;
     private readonly SessionTracker tracker;
+    private IReadOnlyList<SessionRecord> activity=[];
+    public IReadOnlyList<SessionRecord> Activity=>Volatile.Read(ref activity);
     public IngestionWriter(Database database,SessionTracker tracker)
     {
         this.database=database;this.tracker=tracker;
@@ -27,7 +29,7 @@ public sealed class IngestionWriter
             using var deleted=Database.Command(c,tx,"SELECT 1 FROM DeletionTombstone WHERE InstanceId=$id AND MediaEpoch=$epoch",("$id",e.InstanceId.ToString()),("$epoch",e.MediaEpoch?.ToString()));
             if(deleted.ExecuteScalar() is null)Persist(c,tx,tracker.Apply(e));
             using var ack=Database.Command(c,tx,"INSERT INTO IngestionCheckpoint VALUES($id,$seq) ON CONFLICT(InstanceId) DO UPDATE SET Sequence=$seq",("$id",e.InstanceId.ToString()),("$seq",e.Sequence));ack.ExecuteNonQuery();
-            SaveCheckpoint(c,tx);tx.Commit();return new(e.Sequence,false);
+            SaveCheckpoint(c,tx);tx.Commit();Volatile.Write(ref activity,tracker.CurrentSessions);return new(e.Sequence,false);
         }
         catch{tracker.ImportCheckpoint(before);throw;}
         finally{database.WriteGate.Release();}
@@ -39,15 +41,18 @@ public sealed class IngestionWriter
     private async Task ChangeAsync(Func<EngineUpdate> change,CancellationToken ct)
     {
         await database.WriteGate.WaitAsync(ct);string before=tracker.ExportCheckpoint();
-        try{using var c=database.Open();using var tx=c.BeginTransaction();Persist(c,tx,change());SaveCheckpoint(c,tx);tx.Commit();}
+        try{using var c=database.Open();using var tx=c.BeginTransaction();Persist(c,tx,change());SaveCheckpoint(c,tx);tx.Commit();Volatile.Write(ref activity,tracker.CurrentSessions);}
         catch{tracker.ImportCheckpoint(before);throw;}
         finally{database.WriteGate.Release();}
     }
     internal void DiscardSessions(IReadOnlySet<Guid> sessionIds)=>tracker.DiscardSessions(sessionIds);
+    internal string CaptureCheckpoint()=>tracker.ExportCheckpoint();
+    internal void RestoreCheckpoint(string checkpoint)=>tracker.ImportCheckpoint(checkpoint);
+    internal void PublishActivity()=>Volatile.Write(ref activity,tracker.CurrentSessions);
     internal void ReloadCheckpoint(SqliteConnection c)
     {
         using var cmd=Database.Command(c,null,"SELECT Value FROM Metadata WHERE Key='tracker'");
-        if(cmd.ExecuteScalar() is string json)tracker.ImportCheckpoint(json);
+        tracker.ImportCheckpoint(cmd.ExecuteScalar() is string json?json:new SessionTracker().ExportCheckpoint());
     }
     internal void SaveCheckpoint(SqliteConnection c,SqliteTransaction tx)
     {using var cmd=Database.Command(c,tx,"INSERT INTO Metadata VALUES('tracker',$json) ON CONFLICT(Key) DO UPDATE SET Value=$json",("$json",tracker.ExportCheckpoint()));cmd.ExecuteNonQuery();}

@@ -9,7 +9,7 @@ sid=win32security.ConvertSidToStringSid(win32security.GetTokenInformation(win32s
 session_id=ctypes.c_ulong();ctypes.windll.kernel32.ProcessIdToSessionId(os.getpid(),ctypes.byref(session_id));session=session_id.value
 name=rf'\\.\pipe\PotTrace.{sid}.{session}.integration'
 h=win32pipe.CreateNamedPipe(name,3,0,1,65536,65536,0,None)
-startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
+startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=5 if '--visible' in sys.argv else 0
 env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet')
 p=subprocess.Popen([str(ROOT/'out/player/PotPlayerMini64.exe'),str(ROOT/'out/fixtures/测试 影片.avi'),'/new','/seek=0'],env=env,startupinfo=startup)
 def receive():

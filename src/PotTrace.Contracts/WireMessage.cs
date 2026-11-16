@@ -9,5 +9,6 @@ public sealed record WireMessage
     public PlaybackEvent[]? Events { get; init; }
     public string? Command { get; init; }
     public int ProcessId { get; init; }
+    public int PlayerCount { get; init; }
 }
 public sealed record ValidationResult(bool IsValid, string? Error = null);

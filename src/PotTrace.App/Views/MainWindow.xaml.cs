@@ -19,30 +19,37 @@ public partial class MainWindow:Window
     private int page;
     private long detailGeneration;
     private bool loading;
+    private bool refreshing;
     private HistoryFilter filter=new();
     public MainWindow(App host)
     {
         this.host=host;repository=new(host.Database);vm=new(repository.GetMoviesAsync,host.Settings.Mode);InitializeComponent();
         Loaded+=async (_,_)=>await Run(RefreshAsync);
         var statusTimer=new DispatcherTimer(TimeSpan.FromSeconds(1),DispatcherPriority.Background,(_,_)=>UpdateStatus(),Dispatcher);statusTimer.Start();
-        Closed+=(_,_)=>statusTimer.Stop();
+        var refreshTimer=new DispatcherTimer(TimeSpan.FromSeconds(5),DispatcherPriority.Background,async (_,_)=>{if(IsVisible&&!refreshing)await Run(RefreshAsync);},Dispatcher);refreshTimer.Start();
+        Closed+=(_,_)=>{statusTimer.Stop();refreshTimer.Stop();};
     }
     private async Task Run(Func<Task> operation)
     {try{await operation();}catch(Exception ex){MessageBox.Show(this,ex.Message,"操作未完成",MessageBoxButton.OK,MessageBoxImage.Warning);}}
     private async Task RefreshAsync()
     {
+        if(refreshing)return;refreshing=true;
+        try {
         var selected=(Movies.SelectedItem as MovieRow)?.MovieKey;
         filter=new(FromDate.SelectedDate is {} f?DateOnly.FromDateTime(f):null,ToDate.SelectedDate is {} t?DateOnly.FromDateTime(t):null,Search.Text.Trim() is {Length:>0} text?text:null,Offset:page*100,Limit:100);
         await vm.RefreshAsync(filter,default);Movies.ItemsSource=vm.Movies.Select(x=>new MovieRow(x)).ToArray();
         EmptyText.Visibility=vm.Movies.Count==0?Visibility.Visible:Visibility.Collapsed;
         SummaryText.Text=$"本页 {vm.Movies.Count} 部 · {vm.Movies.Sum(x=>x.OpenCount)} 次";PageText.Text=$"第 {page+1} 页";
         Movies.SelectedItem=Movies.Items.Cast<MovieRow>().FirstOrDefault(x=>x.MovieKey==selected)??Movies.Items.Cast<MovieRow>().FirstOrDefault();UpdateStatus();
+        if(Movies.SelectedItem is null){detailGeneration++;Sessions.ItemsSource=null;Sources.ItemsSource=null;Segments.ItemsSource=null;Hotspots.ItemsSource=null;Timeline.SetSegments([]);Heat.SetHeat([]);Notice.Text="";}
+        }finally{refreshing=false;}
     }
     private void UpdateStatus()
     {
         PauseButton.Content=host.Settings.RecordingPaused?"恢复统计":"暂停统计";
         StatusText.Text=$"{(host.Settings.RecordingPaused?"统计已暂停":host.PlayerCount==0?"等待 PotPlayer 连接":host.Status)}  ·  {host.PlayerCount} 个播放器  ·  {(host.Settings.Mode==CaptureMode.Simple?"精简":"详细")}采集  ·  时长按实际播放时间累计";
         CurrentText.Text=host.Latest?.SourcePath is {} path?$"当前：{Path.GetFileName(path)}  ·  {host.Latest.State}  ·  位置与倍速使用采样估算":"首次启用：PotPlayer → 选项 → 扩展功能 → 播放统计 → 勾选 PotTrace";
+        var active=host.Writer.Activity.LastOrDefault();if(active is not null)CurrentText.Text+="  ·  "+MainViewModel.SessionStatus(active);
     }
     private void SetDetailed(bool value){vm.DetailedView=value;DetailPanel.Visibility=value?Visibility.Visible:Visibility.Collapsed;MovieColumn.Width=new GridLength(value?4:1,GridUnitType.Star);DetailColumn.Width=new GridLength(value?6:0,GridUnitType.Star);}
     private void SimpleClick(object sender,RoutedEventArgs e)=>SetDetailed(false);
@@ -57,11 +64,14 @@ public partial class MainWindow:Window
         await Run(async ()=>
         {
             long request=++detailGeneration;
+            var selectedSession=(Sessions.SelectedItem as SessionRow)?.Record.SessionId;
+            var selectedSource=(Sources.SelectedItem as SourceRow)?.Id;
             var sessions=await repository.GetSessionsAsync(filter with {MovieKey=movie.MovieKey,Offset=0,Limit=1000},default);
             if(request!=detailGeneration)return;
             loading=true;Sessions.ItemsSource=sessions.Select(x=>new SessionRow(x)).ToArray();
-            Sources.ItemsSource=sessions.DistinctBy(x=>x.SourceId).Select(x=>new SourceRow(x.SourceId,x.SourcePath)).ToArray();Sources.SelectedIndex=0;loading=false;
-            Sessions.SelectedIndex=0;await LoadHeatAsync();
+            Sources.ItemsSource=sessions.DistinctBy(x=>x.SourceId).Select(x=>new SourceRow(x.SourceId,x.SourcePath)).ToArray();
+            Sources.SelectedItem=Sources.Items.Cast<SourceRow>().FirstOrDefault(x=>x.Id==selectedSource)??Sources.Items.Cast<SourceRow>().FirstOrDefault();loading=false;
+            Sessions.SelectedItem=Sessions.Items.Cast<SessionRow>().FirstOrDefault(x=>x.Record.SessionId==selectedSession)??Sessions.Items.Cast<SessionRow>().FirstOrDefault();await LoadHeatAsync();
         });
     }
     private async void SessionSelected(object sender,SelectionChangedEventArgs e)

@@ -22,7 +22,7 @@ struct State {
  std::deque<Raw> raw;size_t rawBytes=0;bool rawGap=false;
  std::deque<Out> outgoing;size_t outBytes=0;bool outGap=false;
  std::wstring folder,exe,data,channel,pipe;std::string instance=guid(),epoch,path;
- long long seq=0,pos=0,duration=0;ULONGLONG last=0;double rate=1;std::string playState="Unknown";bool active=false;HWND hwnd=nullptr;
+ long long seq=0,pos=0,duration=0,ratePos=0;ULONGLONG last=0,rateAt=0;double rate=1;int warmSamples=0;std::string playState="Unknown";bool active=false;HWND hwnd=nullptr;
 };
 State* state=nullptr;std::mutex initGate;
 BOOL CALLBACK findWindow(HWND h,LPARAM arg){DWORD pid=0;GetWindowThreadProcessId(h,&pid);if(pid!=GetCurrentProcessId())return TRUE;wchar_t cls[80];GetClassNameW(h,cls,80);if(wcscmp(cls,L"PotPlayer64")==0){*reinterpret_cast<HWND*>(arg)=h;return FALSE;}return TRUE;}
@@ -34,6 +34,14 @@ void emit(State& s,std::string kind,ULONGLONG now,const std::string& stamp,bool 
  long long seq=++s.seq;
  std::string j="{\"protocolVersion\":1,\"instanceId\":"+quote(s.instance)+",\"mediaEpoch\":"+(s.epoch.empty()?"null":quote(s.epoch))+",\"sequence\":"+std::to_string(seq)+",\"kind\":"+quote(kind)+",\"observedAtUtc\":"+quote(stamp)+",\"monotonicMs\":"+std::to_string(now)+",\"sourcePath\":"+(s.path.empty()?"null":quote(s.path))+",\"positionMs\":"+std::to_string(std::max(0LL,s.pos))+",\"durationMs\":"+std::to_string(std::max(0LL,s.duration))+",\"state\":"+quote(s.playState)+",\"rate\":"+std::to_string(s.rate)+",\"quality\":"+quote(gap?"Gap":"Estimated")+"}";
  if(s.outgoing.size()>=4096||s.outBytes+j.size()>8*1024*1024){s.outGap=true;return;}
+#ifdef _DEBUG
+ // Explicit fixture diagnostics only; normal builds never write event traces.
+ wchar_t tracePath[32768];
+ if(GetEnvironmentVariableW(L"POTTRACE_TEST_EVENT_TRACE",tracePath,32768)>0){
+  HANDLE trace=CreateFileW(tracePath,FILE_APPEND_DATA,FILE_SHARE_READ,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+  if(trace!=INVALID_HANDLE_VALUE){auto line=j+"\n";DWORD written;WriteFile(trace,line.data(),static_cast<DWORD>(line.size()),&written,nullptr);CloseHandle(trace);}
+ }
+#endif
  s.outBytes+=j.size();s.outgoing.push_back({seq,std::move(j)});
 }
 void sample(State& s,ULONGLONG now){
@@ -45,7 +53,7 @@ void sample(State& s,ULONGLONG now){
  if(!s.active&&s.path.empty())return;
  if(!s.active){
   if((status!=1&&status!=2)||total<=0)return;
-  s.active=true;s.pos=pos;s.duration=total;s.playState=status==2?"Playing":"Paused";s.last=now;
+  s.active=true;s.pos=pos;s.duration=total;s.playState=status==2?"Playing":"Paused";s.last=now;s.warmSamples=0;s.rateAt=now;s.ratePos=pos;
   emit(s,"MediaOpened",now,utc());return;
  }
  // The verified WM_USER position is refreshed in roughly 500 ms steps.
@@ -60,10 +68,17 @@ void sample(State& s,ULONGLONG now){
  else if(s.playState=="Paused"&&old!="Paused")kind="Paused";
  else if(s.playState=="Playing"&&old=="Paused")kind="Resumed";
  else if(s.playState=="Playing"&&(old=="Playing"||old=="Buffering")){
-  auto result=classify(dt,pos-previous,s.rate);kind=result.kind;gap=result.gap;s.rate=result.rate;
+  auto result=classify(dt,pos-previous,s.rate);
+  if(s.warmSamples<2&&pos>previous&&dt>0&&dt<=1500&&pos-previous<=dt*s.rate+100){result={"Snapshot",s.rate,false};s.warmSamples++;}
+  kind=result.kind;gap=result.gap;s.rate=result.rate;
   if(kind=="BufferingStarted")s.playState="Buffering";
   else if(old=="Buffering"&&kind=="Snapshot")kind="BufferingEnded";
  }
+ if(kind=="Snapshot"&&s.playState=="Playing"&&now-s.rateAt>=2000){
+  double estimated=estimateRate(static_cast<long long>(now-s.rateAt),pos-s.ratePos,s.rate);
+  if(estimated!=s.rate){s.rate=estimated;kind="RateChanged";}
+  s.rateAt=now;s.ratePos=pos;
+ }else if(kind!="Snapshot"){s.rateAt=now;s.ratePos=pos;}
  emit(s,kind,now,utc(),gap);s.last=now;if(kind=="Stopped")s.path.clear();
 }
 void callback(State& s,const Raw& raw){
@@ -78,16 +93,21 @@ void callback(State& s,const Raw& raw){
  if(kind=="Start"){
   if(s.active&&s.path==path){s.duration=total;return;}
   if(s.epoch.empty()||s.path!=path){if(s.active)emit(s,"MediaClosed",now,raw.stamp);s.epoch=guid();}
-  s.path=path;s.duration=total;s.pos=0;query(s.hwnd,0x5004,s.pos);s.playState="Playing";s.active=true;s.last=now;
+  s.path=path;s.duration=total;s.pos=0;query(s.hwnd,0x5004,s.pos);s.playState="Playing";s.active=true;s.last=now;s.rateAt=now;s.ratePos=s.pos;s.warmSamples=0;
   emit(s,"MediaOpened",now,raw.stamp);return;
  }
  if(!s.active||s.path!=path){if(kind=="Close"&&s.path==path)s.path.clear();return;}
  if(kind=="Time")return;
+ if(kind=="Pause"||kind=="Resume"){
+  long long actual=0;if(!query(s.hwnd,0x5006,actual))return;
+  auto desired=kind=="Pause"?"Paused":"Playing";
+  if((kind=="Pause"&&actual!=1)||(kind=="Resume"&&actual!=2)||s.playState==desired)return;
+ }
  query(s.hwnd,0x5004,s.pos);
  if(kind=="Pause")s.playState="Paused";
  if(kind=="Resume")s.playState="Playing";
  emit(s,kind=="Pause"?"Paused":kind=="Resume"?"Resumed":kind=="Complete"?"Completed":"MediaClosed",now,raw.stamp);
- s.last=now;if(kind=="Close"||kind=="Complete"){s.active=false;s.epoch.clear();s.path.clear();}
+ s.last=now;s.rateAt=now;s.ratePos=s.pos;if(kind=="Close"||kind=="Complete"){s.active=false;s.epoch.clear();s.path.clear();}
 }
 void observe(State* p){auto& s=*p;EnumWindows(findWindow,reinterpret_cast<LPARAM>(&s.hwnd));emit(s,"InstanceStarted",GetTickCount64(),utc());ULONGLONG next=0;bool wasSuppressed=false;
  while(!s.stop){
@@ -96,7 +116,7 @@ void observe(State* p){auto& s=*p;EnumWindows(findWindow,reinterpret_cast<LPARAM
   for(const auto& raw:batch)callback(s,raw);
   if(s.suppressed){std::lock_guard lock(s.outGate);s.outgoing.clear();s.outBytes=0;s.active=false;wasSuppressed=true;Sleep(20);continue;}
   if(wasSuppressed){s.epoch=guid();s.active=false;wasSuppressed=false;}
-  auto now=GetTickCount64();if(now>=next){sample(s,now);next=now+500;}
+  auto now=GetTickCount64();if(now>=next){sample(s,now);next=now+(s.playState=="Paused"?500:250);}
   Sleep(20);
  }
 }
@@ -124,7 +144,7 @@ void transport(State* p){auto& s=*p;auto file=s.folder+L"\\pottrace-bridge.ini";
   while(ok&&!s.stop){
    DWORD available=0;if(!PeekNamedPipe(pipe,nullptr,0,nullptr,&available,nullptr))break;
    if(available){if(!receive(pipe,response))break;if(response.find("UserExit")!=std::string::npos){s.suppressed=true;break;}}
-   std::vector<Out> batch;{std::lock_guard lock(s.outGate);for(auto& item:s.outgoing){if(batch.size()==128)break;batch.push_back(item);}}
+   std::vector<Out> batch;size_t batchBytes=0;{std::lock_guard lock(s.outGate);for(auto& item:s.outgoing){if(!batchFits(batchBytes,batch.size(),item.json.size()))break;batchBytes+=item.json.size();batch.push_back(item);}}
    if(batch.empty()){Sleep(50);continue;}
    std::string frame="{\"version\":1,\"type\":\"Events\",\"instanceId\":"+quote(s.instance)+",\"events\":[";
    for(size_t i=0;i<batch.size();i++){if(i)frame+=',';frame+=batch[i].json;}frame+="]}";
@@ -142,7 +162,7 @@ DWORD WINAPI observeEntry(void* value){observe(static_cast<State*>(value));retur
 DWORD WINAPI transportEntry(void* value){transport(static_cast<State*>(value));return 0;}
 }
 extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* bytes,uint32_t length){
- if(!bytes||!length||length>32768)return -1;std::lock_guard lock(initGate);if(state)return state->stop?-2:0;
+ if(!bytes||!length||length>131072)return -1;std::lock_guard lock(initGate);if(state)return state->stop?-2:0;
  auto folder=wide(std::string_view(reinterpret_cast<const char*>(bytes),length));if(folder.empty())return -1;
  HMODULE pinned=nullptr;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(&PotTrace_Initialize),&pinned);
  state=new State;state->folder=std::move(folder);
@@ -154,7 +174,7 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* byte
  if(!observer||!sender){state->stop=true;return -3;}return 0;
 }
 extern "C" __declspec(dllexport) int32_t PotTrace_Enqueue(const uint8_t* bytes,uint32_t length){
- auto p=state;if(!p||p->stop||!bytes||length>65536)return -1;
+ auto p=state;if(!p||p->stop||!bytes||length>262144)return -1;
  std::lock_guard lock(p->rawGate);if(p->raw.size()>=4096||p->rawBytes+length>8*1024*1024){p->rawGap=true;return 1;}
  p->raw.push_back({std::string(reinterpret_cast<const char*>(bytes),length),GetTickCount64(),utc()});p->rawBytes+=length;return 0;
 }

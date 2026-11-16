@@ -4,6 +4,25 @@ namespace PotTrace.Storage.Tests;
 
 public class PersistenceTests
 {
+    [Fact] public async Task ExportQueryIncludesAllSessionsBeyondTheDisplayPage()
+    {
+        using var f=await Fixture.Create();await f.Send(0,PlaybackEventKind.MediaOpened);await f.Send(12000,PlaybackEventKind.MediaClosed);
+        f.Epoch=Guid.NewGuid();await f.Send(20000,PlaybackEventKind.MediaOpened);await f.Send(32000,PlaybackEventKind.MediaClosed);
+        Assert.Single(await f.Repo.GetSessionsAsync(new(Limit:1),default));
+        Assert.Equal(2,(await f.Repo.GetAllSessionsAsync(new(Limit:1,Offset:1),default)).Count);
+    }
+    [Fact] public async Task FailedWriteHasNoAcknowledgementAndReplayCommitsOnce()
+    {
+        using var f=await Fixture.Create();await f.Send(0,PlaybackEventKind.MediaOpened);var e=f.Event(12000);
+        using var c=new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={f.Db.Path}");c.Open();
+        using var cmd=c.CreateCommand();cmd.CommandText="CREATE TRIGGER fail_ack BEFORE UPDATE ON IngestionCheckpoint BEGIN SELECT RAISE(FAIL,'injected disk failure'); END;";cmd.ExecuteNonQuery();
+        await Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>(()=>f.Writer.ApplyAsync(e,default));
+        Assert.Empty(await f.Repo.GetMoviesAsync(new(),default));
+        cmd.CommandText="DROP TRIGGER fail_ack";cmd.ExecuteNonQuery();
+        Assert.Equal(e.Sequence,(await f.Writer.ApplyAsync(e,default)).CommittedSequence);
+        await f.Writer.ApplyAsync(e,default);
+        var movie=Assert.Single(await f.Repo.GetMoviesAsync(new(),default));Assert.Equal(1,movie.OpenCount);Assert.Equal(12000,movie.PlayedMs);
+    }
     [Fact] public async Task RestartAndReplayCannotDuplicateSession()
     {
         using var f=await Fixture.Create();await f.Send(0,PlaybackEventKind.MediaOpened);var e=f.Event(11000);
@@ -12,6 +31,9 @@ public class PersistenceTests
         await restarted.ApplyAsync(e,default);await restarted.ApplyAsync(f.Event(12000),default);
         var row=Assert.Single(await f.Repo.GetMoviesAsync(new(),default));
         Assert.Equal(1,row.OpenCount);Assert.Equal(12000,row.PlayedMs);
+        var session=Assert.Single(await f.Repo.GetSessionsAsync(new(),default));
+        Assert.Equal(CaptureMode.Detailed,session.Mode);
+        Assert.Equal(12000,Assert.Single(await f.Repo.GetSegmentsAsync(session.SessionId,default)).PlayedMs);
         Assert.Equal("ok",await f.Db.IntegrityCheckAsync());
     }
     [Fact] public async Task SimpleModeKeepsDailyFactsWithoutSegments()

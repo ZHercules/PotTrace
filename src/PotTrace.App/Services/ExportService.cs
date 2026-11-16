@@ -9,7 +9,7 @@ public static class ExportService
     {if(value.Length>0 && "=+-@\t\r".Contains(value[0]))value="'"+value;return "\""+value.Replace("\"","\"\"")+"\"";}
     public static async Task ExportAsync(HistoryRepository repository,HistoryFilter filter,string path,bool json,CancellationToken ct)
     {
-        var sessions=await repository.GetSessionsAsync(filter with {Limit=100000,Offset=0},ct);
+        var sessions=await repository.GetAllSessionsAsync(filter,ct);
         if(json)
         {
             var segments=await repository.GetAllSegmentsAsync(filter,ct);

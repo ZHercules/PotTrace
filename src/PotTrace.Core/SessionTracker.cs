@@ -89,6 +89,7 @@ public sealed class SessionTracker
         Close(state,state.Last,"Disconnected");return Snapshot([state]);
     }
     public IReadOnlyList<Guid> ActiveInstances=>active.Keys.ToArray();
+    public IReadOnlyList<SessionRecord> CurrentSessions=>active.Values.Select(x=>x.Record).ToArray();
     public void DiscardSessions(IReadOnlySet<Guid> sessionIds)
     {foreach(var pair in active.Where(x=>sessionIds.Contains(x.Value.Record.SessionId)).ToArray())active.Remove(pair.Key);}
 

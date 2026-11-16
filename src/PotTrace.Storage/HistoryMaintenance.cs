@@ -8,6 +8,7 @@ public sealed class HistoryMaintenance
     public async Task<int> DeleteAsync(HistoryFilter filter,CancellationToken ct)
     {
         await database.WriteGate.WaitAsync(ct);
+        string before=writer.CaptureCheckpoint();
         try
         {
             using var c=database.Open();using var tx=c.BeginTransaction();
@@ -18,8 +19,9 @@ public sealed class HistoryMaintenance
                 using var tombstone=Database.Command(c,tx,"INSERT OR IGNORE INTO DeletionTombstone VALUES($instance,$epoch)",("$instance",s.InstanceId.ToString()),("$epoch",s.MediaEpoch.ToString()));await tombstone.ExecuteNonQueryAsync(ct);
                 using var remove=Database.Command(c,tx,"DELETE FROM Session WHERE Id=$id",("$id",s.SessionId.ToString()));await remove.ExecuteNonQueryAsync(ct);
             }
-            writer.DiscardSessions(sessions.Select(x=>x.SessionId).ToHashSet());writer.SaveCheckpoint(c,tx);tx.Commit();return sessions.Count;
+            writer.DiscardSessions(sessions.Select(x=>x.SessionId).ToHashSet());writer.SaveCheckpoint(c,tx);tx.Commit();writer.PublishActivity();return sessions.Count;
         }
+        catch{writer.RestoreCheckpoint(before);throw;}
         finally{database.WriteGate.Release();}
     }
 }

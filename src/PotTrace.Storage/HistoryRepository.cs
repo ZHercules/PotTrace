@@ -28,6 +28,12 @@ public sealed class HistoryRepository
         using var c=database.Open();using var cmd=c.CreateCommand();cmd.CommandText=$"SELECT s.Payload FROM Session s WHERE {Where} ORDER BY s.StartedUtc DESC LIMIT $limit OFFSET $offset";Filter(cmd,filter);
         return await ReadJson<SessionRecord>(cmd,ct);
     }
+    public async Task<IReadOnlyList<SessionRecord>> GetAllSessionsAsync(HistoryFilter filter,CancellationToken ct)
+    {
+        using var c=database.Open();using var cmd=c.CreateCommand();
+        cmd.CommandText=$"SELECT s.Payload FROM Session s WHERE {Where} ORDER BY s.StartedUtc DESC";Filter(cmd,filter);
+        return await ReadJson<SessionRecord>(cmd,ct);
+    }
     public async Task<IReadOnlyList<SegmentRecord>> GetSegmentsAsync(Guid sessionId,CancellationToken ct)
     {using var c=database.Open();using var cmd=Database.Command(c,null,"SELECT Payload FROM Segment WHERE SessionId=$id ORDER BY StartMs",("$id",sessionId.ToString()));return (await ReadJson<SegmentRecord>(cmd,ct)).OrderBy(x=>x.Order).ToArray();}
     public async Task<IReadOnlyList<SegmentRecord>> GetAllSegmentsAsync(HistoryFilter filter,CancellationToken ct)

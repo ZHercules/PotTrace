@@ -1,0 +1,4 @@
+[
+ {"instanceId":"11111111-1111-1111-1111-111111111111","mediaEpoch":"22222222-2222-2222-2222-222222222222","sequence":1,"kind":"MediaOpened","sourcePath":"D:\\Fixture\\pause.avi","monotonicMs":0,"positionMs":0,"state":"Paused"},
+ {"instanceId":"11111111-1111-1111-1111-111111111111","mediaEpoch":"22222222-2222-2222-2222-222222222222","sequence":2,"kind":"MediaClosed","sourcePath":"D:\\Fixture\\pause.avi","monotonicMs":11000,"positionMs":0,"state":"Paused"}
+]

@@ -19,6 +19,8 @@ public partial class App
     private string dataDirectory="";
     private bool stopping;
     private readonly Services.SourceResolver sources=new();
+    private Services.HotkeyManager? hotkey;
+    public bool HotkeyRegistered=>hotkey?.Registered??false;
     public Database Database {get;private set;}=null!;
     public IngestionWriter Writer {get;private set;}=null!;
     public CaptureSettings Settings {get;private set;}=new();
@@ -38,11 +40,13 @@ public partial class App
             if(!instance.IsOwner)
             {
                 if(!e.Args.Contains("--background"))
-                {using var pipe=new NamedPipeClientStream(".",instance.PipeName,PipeDirection.InOut,PipeOptions.Asynchronous);using var ct=new CancellationTokenSource(3000);await pipe.ConnectAsync(ct.Token);await pipe.WriteAsync(FrameCodec.Encode(new(){Type="Control",Command="Show"}),ct.Token);}
+                {using var pipe=new NamedPipeClientStream(".",instance.PipeName,PipeDirection.InOut,PipeOptions.Asynchronous);using var ct=new CancellationTokenSource(3000);await pipe.ConnectAsync(ct.Token);await pipe.WriteAsync(FrameCodec.Encode(new(){Type="Control",Command=e.Args.Contains("--exit")?"Exit":"Show"}),ct.Token);}
                 Shutdown();return;
             }
+            if(e.Args.Contains("--exit")){Shutdown();return;}
             SettingsStore=new(Path.Combine(dataDirectory,"settings.json"));Settings=await SettingsStore.LoadAsync(default);
             ApplyTheme();
+            hotkey=new(ShowHistory);hotkey.Register(Settings.HotKeyModifiers,Settings.HotKey);
             Database=await Database.CreateAsync(Path.Combine(dataDirectory,"pottrace.db"));
             Writer=new(Database,new SessionTracker(Settings.Mode));Writer.SetNextCaptureMode(Settings.Mode);
             if(Settings.RecordingPaused||!Settings.Enabled)await Writer.SetCaptureEnabledAsync(false,default);
@@ -54,8 +58,10 @@ public partial class App
                     var ignored=await Writer.ApplyAsync(item with {SourcePath=null,MediaEpoch=null,Kind=PlaybackEventKind.InstanceStarted,State=PlaybackState.Unknown},ct);
                     return ignored.CommittedSequence;
                 }
-                item=sources.Resolve(item);var result=await Writer.ApplyAsync(item,ct);Latest=item;Status="正在采集";return result.CommittedSequence;
-            },async (id,ct)=>{sources.Forget(id);await Writer.DisconnectAsync(id,ct);},command=>Dispatcher.InvokeAsync(()=>{if(command=="Show")ShowHistory();}).Task);
+                item=sources.Resolve(item);var result=await Writer.ApplyAsync(item,ct);Latest=item;
+                Status=item.SourcePath is null?"已连接，等待当前影片回调":"正在采集";return result.CommittedSequence;
+            },async (id,ct)=>{sources.Forget(id);await Writer.DisconnectAsync(id,ct);},command=>
+            {Dispatcher.BeginInvoke(new Action(async ()=>{if(command=="Show")ShowHistory();else if(command=="Exit")await StopAsync(true);}));return Task.CompletedTask;});
             server.Error+=ex=>{Status="采集连接异常，请查看诊断日志";Log(ex);};server.Start();
             tray=new(){Icon=System.Drawing.SystemIcons.Application,Text="PotTrace 播放统计",Visible=true};
             var menu=new System.Windows.Forms.ContextMenuStrip();menu.Items.Add("播放统计",null,(_,_)=>ShowHistory());
@@ -70,6 +76,7 @@ public partial class App
     public async Task SaveSettingsAsync(CaptureSettings settings)
     {
         await SettingsStore.SaveAsync(settings,default);Settings=settings;
+        hotkey?.Register(settings.HotKeyModifiers,settings.HotKey);
         Writer.SetNextCaptureMode(settings.Mode);await Writer.SetCaptureEnabledAsync(!settings.RecordingPaused&&settings.Enabled,default);
         Status=settings.RecordingPaused?"统计已暂停":"正在采集";
     }
@@ -81,7 +88,10 @@ public partial class App
             window.Closing+=(_,e)=>{if(!stopping){e.Cancel=true;window.Hide();lifetime.SetWindowVisible(false);}};
         }
         lifetime.SetWindowVisible(true);window.Show();window.WindowState=WindowState.Normal;window.Activate();
+        ShowWindow(new System.Windows.Interop.WindowInteropHelper(window).Handle,5);
     }
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hwnd,int command);
     private async Task StopAsync(bool requested)
     {
         if(stopping)return;stopping=true;timer?.Stop();
@@ -100,5 +110,5 @@ public partial class App
     }
     private void Log(Exception ex)
     {try{File.AppendAllText(Path.Combine(dataDirectory,"diagnostics.log"),$"{DateTimeOffset.UtcNow:O} {ex.GetType().Name}: {ex.Message}\n");}catch(IOException){ }}
-    protected override void OnExit(ExitEventArgs e){tray?.Dispose();instance?.Dispose();base.OnExit(e);}
+    protected override void OnExit(ExitEventArgs e){hotkey?.Dispose();tray?.Dispose();instance?.Dispose();base.OnExit(e);}
 }

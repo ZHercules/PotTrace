@@ -43,12 +43,16 @@ public sealed class NamedPipeServer:IAsyncDisposable
             using(var process=Process.GetProcessById((int)pid))
                 if(process.SessionId!=Process.GetCurrentProcess().SessionId)throw new InvalidDataException("Wrong login session");
             var hello=await FrameCodec.ReadAsync(pipe,handshake.Token);
-            if(hello?.Type=="Control") {await control(hello.Command??"");return;}
+            if(hello?.Type=="Control")
+            {
+                if(hello.Command=="Status")await pipe.WriteAsync(FrameCodec.Encode(new(){Type="Status",ProcessId=Environment.ProcessId,PlayerCount=life.PlayerCount}),stop.Token);
+                else await control(hello.Command??"");return;
+            }
             if(hello?.Type!="Hello"||hello.InstanceId==Guid.Empty||hello.ProcessId!=(int)pid)throw new InvalidDataException("Invalid handshake");
             instance=hello.InstanceId;client=new(pipe);
             if(!clients.TryAdd(instance,client))throw new InvalidDataException("Instance already connected");
             life.OnPlayerConnected(instance);
-            await client.SendAsync(new(){Type="Status",InstanceId=instance,Command="Connected"},stop.Token);
+            await client.SendAsync(new(){Type="Status",InstanceId=instance,Command="Connected",ProcessId=Environment.ProcessId,PlayerCount=life.PlayerCount},stop.Token);
             while(!stop.IsCancellationRequested)
             {
                 var message=await FrameCodec.ReadAsync(pipe,stop.Token);if(message is null)break;
