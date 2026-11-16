@@ -6,3 +6,5 @@ artifacts/
 **/bin/
 **/obj/
 *.user
+**/__pycache__/
+.vs/
