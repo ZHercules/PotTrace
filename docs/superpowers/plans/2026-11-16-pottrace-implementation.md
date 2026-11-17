@@ -126,7 +126,7 @@
 **Interfaces:** `SegmentTracker.Apply(PlaybackEvent e) -> SegmentUpdate`，SegmentUpdate 在 Models 中定义，含候选/结束片段及其日时长分配；`HeatmapBuilder.Build(IEnumerable<SegmentRecord> segments) -> IReadOnlyList<HeatInterval>`，HeatInterval 含 SourceId、StartMs、EndMs、Count。
 
 - [ ] 写测试断言：5,000 毫秒片段不入明细、5,001 毫秒入明细；4 秒播放/暂停/4 秒播放产生 0 个有效片段，短片段合计 8,000 毫秒；重复 8 秒片段保留两条；暂停无热度；跳转跨越内容不入区间。
-- [ ] 运行 `dotnet test tests/PotTrace.Core.Tests --filter SegmentTrackerTests` 确认失败；实现暂停、缓冲、跳转、变速、回绕、结束、休眠和 Gap 截断。会话无效时禁止把候选片段提交到正式明细。
+- [ ] 运行 `dotnet test tests/PotTrace.Core.Tests --filter SegmentTrackerTests` 确认失败；实现暂停、缓冲、跳转、回绕、结束、休眠和 Gap 截断。连续变速按2026-11-17用户确认保留为片段内事件，不再截断。会话无效时禁止把候选片段提交到正式明细。
 - [ ] 增加热度测试：区间 `[600000,620000)` 两次和 `[610000,630000)` 一次，输出 `[600000,610000):2`、`[610000,620000):3`、`[620000,630000):1`；相接端点不重叠；不同 SourceId 不互相增加；少于 5 秒的热点交集不能被再次过滤。
 - [ ] 实现端点扫描，同位置增减合并后推进；热点排行按次数降序、长度降序。精简模式仅输出时长事实，不永久输出 Segment/TimelineEvent；详细片段跨午夜先判断整段门槛再分配日时长。
 - [ ] 运行 `dotnet test tests/PotTrace.Core.Tests`；补证倍速变化、连续快速往返跳转的可观察边界，不对不可观测事件推算。提交 `feat: record playback segments and heat intervals`。

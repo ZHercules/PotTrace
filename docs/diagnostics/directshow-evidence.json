@@ -1,0 +1,912 @@
+[
+  {
+    "baseline": false,
+    "preload": true,
+    "held_preload": "cancel",
+    "format": "mp4",
+    "error_reopen": null,
+    "actions_completed": null,
+    "basic_probe_passed": null,
+    "deployment_eligible": null,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 76,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": [],
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857036287325500",
+    "player_fixture": "player",
+    "startup_first_active_ms": 1750,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": 1578,
+        "RunAfter_ms": 1750,
+        "StopAfter_ms": 8281,
+        "script_Open_ms": 1110,
+        "script_Start_ms": 2938,
+        "script_start_minus_graph_run_ms": 1188,
+        "renderer_roots": [
+          5572808
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": 8688,
+        "RunAfter_ms": 8750,
+        "StopAfter_ms": 11281,
+        "script_Open_ms": 8391,
+        "script_Start_ms": 8766,
+        "script_start_minus_graph_run_ms": 16,
+        "renderer_roots": [
+          5572808
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": 11672,
+        "RunAfter_ms": 11750,
+        "StopAfter_ms": 24375,
+        "script_Open_ms": 11391,
+        "script_Start_ms": 11781,
+        "script_start_minus_graph_run_ms": 31,
+        "renderer_roots": [
+          5572808
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": null,
+        "script_Start_ms": null,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": 0,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [],
+    "query_timeouts": 0,
+    "held_observed_ms": 11281,
+    "held_colors": [
+      "red",
+      "red"
+    ],
+    "next_color": null,
+    "next_file_open_while_held": true,
+    "graph_held_pause_ms": null,
+    "held_position_tail_range_ms": [
+      999,
+      999
+    ]
+  },
+  {
+    "baseline": false,
+    "preload": true,
+    "held_preload": "resume",
+    "format": "mp4",
+    "error_reopen": null,
+    "actions_completed": null,
+    "basic_probe_passed": null,
+    "deployment_eligible": null,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 90,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": [],
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857077778087000",
+    "player_fixture": "player",
+    "startup_first_active_ms": 1578,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": 1546,
+        "RunAfter_ms": 1718,
+        "StopAfter_ms": 8296,
+        "script_Open_ms": 1078,
+        "script_Start_ms": 2968,
+        "script_start_minus_graph_run_ms": 1250,
+        "renderer_roots": [
+          9833142
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": 8687,
+        "RunAfter_ms": 8750,
+        "StopAfter_ms": 11281,
+        "script_Open_ms": 8406,
+        "script_Start_ms": 8765,
+        "script_start_minus_graph_run_ms": 15,
+        "renderer_roots": [
+          9833142
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": 11656,
+        "RunAfter_ms": 11718,
+        "StopAfter_ms": null,
+        "script_Open_ms": 11375,
+        "script_Start_ms": 11750,
+        "script_start_minus_graph_run_ms": 32,
+        "renderer_roots": [
+          9833142
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": 35343,
+        "RunAfter_ms": 35343,
+        "StopAfter_ms": 38656,
+        "script_Open_ms": null,
+        "script_Start_ms": null,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [
+          9833142
+        ],
+        "renderer_matches_owned_window": true
+      }
+    ],
+    "max_inspection_tick_ms": 0,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [],
+    "query_timeouts": 0,
+    "held_observed_ms": 11281,
+    "held_colors": [
+      "red",
+      "red"
+    ],
+    "next_color": "blue",
+    "next_file_open_while_held": true,
+    "graph_held_pause_ms": 11578,
+    "held_position_tail_range_ms": [
+      985,
+      985
+    ]
+  },
+  {
+    "baseline": false,
+    "preload": true,
+    "held_preload": "resume",
+    "format": "mp4",
+    "error_reopen": null,
+    "actions_completed": null,
+    "basic_probe_passed": null,
+    "deployment_eligible": null,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 90,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": [],
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857132438379400",
+    "player_fixture": "player-current",
+    "startup_first_active_ms": 1625,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": 1593,
+        "RunAfter_ms": 1703,
+        "StopAfter_ms": 7828,
+        "script_Open_ms": 968,
+        "script_Start_ms": 3140,
+        "script_start_minus_graph_run_ms": 1437,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": 8406,
+        "RunAfter_ms": 8437,
+        "StopAfter_ms": 10828,
+        "script_Open_ms": 7953,
+        "script_Start_ms": 8437,
+        "script_start_minus_graph_run_ms": 0,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": 11390,
+        "RunAfter_ms": 11421,
+        "StopAfter_ms": null,
+        "script_Open_ms": 10953,
+        "script_Start_ms": 11421,
+        "script_start_minus_graph_run_ms": 0,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": 35156,
+        "RunAfter_ms": 35140,
+        "StopAfter_ms": 38453,
+        "script_Open_ms": null,
+        "script_Start_ms": null,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": 0,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [],
+    "query_timeouts": 1,
+    "held_observed_ms": 11297,
+    "held_colors": [
+      "red",
+      "red"
+    ],
+    "next_color": "blue",
+    "next_file_open_while_held": true,
+    "graph_held_pause_ms": 11594,
+    "held_position_tail_range_ms": [
+      1096,
+      1096
+    ]
+  },
+  {
+    "baseline": false,
+    "preload": false,
+    "held_preload": null,
+    "format": "mkv",
+    "error_reopen": true,
+    "actions_completed": null,
+    "basic_probe_passed": null,
+    "deployment_eligible": null,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 152,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": null,
+    "invalid_connected_runs": [],
+    "stop_boundary_found": true,
+    "reopen_identity_found": true,
+    "recovery_identity_found": true,
+    "evidence": "graph-probe-1794857292363080400",
+    "player_fixture": "player",
+    "startup_first_active_ms": 1766,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mkv",
+        "PauseAfter_ms": 1579,
+        "RunAfter_ms": 1750,
+        "StopAfter_ms": 8329,
+        "script_Open_ms": 1094,
+        "script_Start_ms": 3047,
+        "script_start_minus_graph_run_ms": 1297,
+        "renderer_roots": [
+          6621126
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "source-b\\same-name.mkv",
+        "PauseAfter_ms": 8735,
+        "RunAfter_ms": 8797,
+        "StopAfter_ms": 11313,
+        "script_Open_ms": 8422,
+        "script_Start_ms": 8813,
+        "script_start_minus_graph_run_ms": 16,
+        "renderer_roots": [
+          6621126
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-01.mkv",
+        "PauseAfter_ms": 11704,
+        "RunAfter_ms": 11766,
+        "StopAfter_ms": 15891,
+        "script_Open_ms": 11407,
+        "script_Start_ms": 11782,
+        "script_start_minus_graph_run_ms": 16,
+        "renderer_roots": [
+          6621126
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-02.mkv",
+        "PauseAfter_ms": 16282,
+        "RunAfter_ms": 16344,
+        "StopAfter_ms": 18797,
+        "script_Open_ms": 16000,
+        "script_Start_ms": 16375,
+        "script_start_minus_graph_run_ms": 31,
+        "renderer_roots": [
+          6621126
+        ],
+        "renderer_matches_owned_window": true
+      }
+    ],
+    "max_inspection_tick_ms": 16,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [],
+    "query_timeouts": 0
+  },
+  {
+    "baseline": false,
+    "preload": true,
+    "held_preload": null,
+    "format": "mkv",
+    "error_reopen": true,
+    "actions_completed": null,
+    "basic_probe_passed": null,
+    "deployment_eligible": null,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 136,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": null,
+    "invalid_connected_runs": [],
+    "stop_boundary_found": true,
+    "reopen_identity_found": true,
+    "recovery_identity_found": true,
+    "evidence": "graph-probe-1794857350686488400",
+    "player_fixture": "player-current",
+    "startup_first_active_ms": 1578,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mkv",
+        "PauseAfter_ms": 1562,
+        "RunAfter_ms": 1672,
+        "StopAfter_ms": 7844,
+        "script_Open_ms": 922,
+        "script_Start_ms": 2797,
+        "script_start_minus_graph_run_ms": 1125,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "source-b\\same-name.mkv",
+        "PauseAfter_ms": 8406,
+        "RunAfter_ms": 8453,
+        "StopAfter_ms": 10828,
+        "script_Open_ms": 7969,
+        "script_Start_ms": 8453,
+        "script_start_minus_graph_run_ms": 0,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-01.mkv",
+        "PauseAfter_ms": 11359,
+        "RunAfter_ms": 11406,
+        "StopAfter_ms": null,
+        "script_Open_ms": 10922,
+        "script_Start_ms": 11391,
+        "script_start_minus_graph_run_ms": -15,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-02.mkv",
+        "PauseAfter_ms": 15437,
+        "RunAfter_ms": 15437,
+        "StopAfter_ms": 18578,
+        "script_Open_ms": null,
+        "script_Start_ms": null,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": 0,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [],
+    "query_timeouts": 0
+  },
+  {
+    "baseline": false,
+    "preload": true,
+    "held_preload": "resume",
+    "format": "mp4",
+    "error_reopen": false,
+    "actions_completed": null,
+    "basic_probe_passed": null,
+    "deployment_eligible": null,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 90,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": [],
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857531693125900",
+    "player_fixture": "player-current",
+    "startup_first_active_ms": 1547,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": 1531,
+        "RunAfter_ms": 1641,
+        "StopAfter_ms": 7860,
+        "script_Open_ms": 891,
+        "script_Start_ms": 8953,
+        "script_start_minus_graph_run_ms": 7312,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": 8406,
+        "RunAfter_ms": 8438,
+        "StopAfter_ms": 10860,
+        "script_Open_ms": 8953,
+        "script_Start_ms": 8953,
+        "script_start_minus_graph_run_ms": 515,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": 11422,
+        "RunAfter_ms": 11469,
+        "StopAfter_ms": null,
+        "script_Open_ms": 10969,
+        "script_Start_ms": 11453,
+        "script_start_minus_graph_run_ms": -16,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": 35297,
+        "RunAfter_ms": 35297,
+        "StopAfter_ms": 38563,
+        "script_Open_ms": null,
+        "script_Start_ms": null,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": 0,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [
+      {
+        "filter": "Built-in Direct3D11 Video Renderer",
+        "videoInterfaceResult": -2147467262,
+        "ownerResult": -2147467262,
+        "serviceResult": -2147467262,
+        "displayResult": -2147467262
+      },
+      {
+        "filter": "Built-in WASAPI Audio Renderer",
+        "videoInterfaceResult": -2147467262,
+        "ownerResult": -2147467262,
+        "serviceResult": -2147467262,
+        "displayResult": -2147467262
+      }
+    ],
+    "query_timeouts": 0,
+    "held_observed_ms": 11328,
+    "held_colors": [
+      "red",
+      "red"
+    ],
+    "next_color": "blue",
+    "next_file_open_while_held": true,
+    "graph_held_pause_ms": 11672,
+    "held_position_tail_range_ms": [
+      1033,
+      1033
+    ]
+  },
+  {
+    "baseline": true,
+    "preload": false,
+    "held_preload": null,
+    "format": "mp4",
+    "error_reopen": true,
+    "actions_completed": true,
+    "basic_probe_passed": true,
+    "deployment_eligible": false,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 0,
+    "log_lost": null,
+    "missing_expected_sources": null,
+    "missing_destroy_records": null,
+    "graph_enumeration_uncertain": null,
+    "unexpected_next_while_held": null,
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857593779136000",
+    "player_fixture": "player",
+    "startup_first_active_ms": 1594,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 1078,
+        "script_Start_ms": 2953,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 8406,
+        "script_Start_ms": 8781,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 11406,
+        "script_Start_ms": 11781,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 15969,
+        "script_Start_ms": 16344,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": null,
+    "enum_end_results": [],
+    "renderer_capabilities": [],
+    "query_timeouts": 0
+  },
+  {
+    "baseline": true,
+    "preload": false,
+    "held_preload": null,
+    "format": "mp4",
+    "error_reopen": true,
+    "actions_completed": true,
+    "basic_probe_passed": true,
+    "deployment_eligible": false,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 0,
+    "log_lost": null,
+    "missing_expected_sources": null,
+    "missing_destroy_records": null,
+    "graph_enumeration_uncertain": null,
+    "unexpected_next_while_held": null,
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857690711074100",
+    "player_fixture": "player-current",
+    "startup_first_active_ms": 1594,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 922,
+        "script_Start_ms": 2500,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 7922,
+        "script_Start_ms": 8422,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 10938,
+        "script_Start_ms": 11422,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": 15531,
+        "script_Start_ms": 16031,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": null,
+    "enum_end_results": [],
+    "renderer_capabilities": [],
+    "query_timeouts": 0
+  },
+  {
+    "baseline": false,
+    "preload": false,
+    "held_preload": null,
+    "format": "avi",
+    "error_reopen": false,
+    "actions_completed": true,
+    "basic_probe_passed": true,
+    "deployment_eligible": false,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 102,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": null,
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857736749252300",
+    "player_fixture": "player",
+    "startup_first_active_ms": 1515,
+    "sources": [
+      {
+        "source": "source-a\\same-name.avi",
+        "PauseAfter_ms": 1500,
+        "RunAfter_ms": 1515,
+        "StopAfter_ms": 8265,
+        "script_Open_ms": 1078,
+        "script_Start_ms": 3015,
+        "script_start_minus_graph_run_ms": 1500,
+        "renderer_roots": [
+          6294150
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "source-b\\same-name.avi",
+        "PauseAfter_ms": 8562,
+        "RunAfter_ms": 8578,
+        "StopAfter_ms": 11265,
+        "script_Open_ms": 8343,
+        "script_Start_ms": 8609,
+        "script_start_minus_graph_run_ms": 31,
+        "renderer_roots": [
+          6294150
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-01.avi",
+        "PauseAfter_ms": 11562,
+        "RunAfter_ms": 11593,
+        "StopAfter_ms": 15500,
+        "script_Open_ms": 11328,
+        "script_Start_ms": 11593,
+        "script_start_minus_graph_run_ms": 0,
+        "renderer_roots": [
+          6294150
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-02.avi",
+        "PauseAfter_ms": 15781,
+        "RunAfter_ms": 15812,
+        "StopAfter_ms": 18750,
+        "script_Open_ms": 15562,
+        "script_Start_ms": 15828,
+        "script_start_minus_graph_run_ms": 16,
+        "renderer_roots": [
+          6294150
+        ],
+        "renderer_matches_owned_window": true
+      }
+    ],
+    "max_inspection_tick_ms": 15,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [
+      {
+        "filter": "Enhanced Video Renderer(Custom Present)",
+        "videoInterfaceResult": -2147467262,
+        "ownerResult": -2147467262,
+        "serviceResult": 0,
+        "displayResult": 0
+      }
+    ],
+    "query_timeouts": 0
+  },
+  {
+    "baseline": false,
+    "preload": true,
+    "held_preload": "cancel",
+    "format": "mp4",
+    "error_reopen": false,
+    "actions_completed": true,
+    "basic_probe_passed": true,
+    "deployment_eligible": false,
+    "failure": null,
+    "exit_code": 0,
+    "forced_termination": null,
+    "graph_event_count": 76,
+    "log_lost": 0,
+    "missing_expected_sources": [],
+    "missing_destroy_records": [],
+    "graph_enumeration_uncertain": true,
+    "unexpected_next_while_held": [],
+    "invalid_connected_runs": null,
+    "stop_boundary_found": null,
+    "reopen_identity_found": null,
+    "recovery_identity_found": null,
+    "evidence": "graph-probe-1794857799935187400",
+    "player_fixture": "player",
+    "startup_first_active_ms": 1750,
+    "sources": [
+      {
+        "source": "source-a\\same-name.mp4",
+        "PauseAfter_ms": 1578,
+        "RunAfter_ms": 1750,
+        "StopAfter_ms": 8313,
+        "script_Open_ms": 1110,
+        "script_Start_ms": 2688,
+        "script_start_minus_graph_run_ms": 938,
+        "renderer_roots": [
+          9439914
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "source-b\\same-name.mp4",
+        "PauseAfter_ms": 8703,
+        "RunAfter_ms": 8781,
+        "StopAfter_ms": 11297,
+        "script_Open_ms": 8422,
+        "script_Start_ms": 8813,
+        "script_start_minus_graph_run_ms": 32,
+        "renderer_roots": [
+          9439914
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-01.mp4",
+        "PauseAfter_ms": 11672,
+        "RunAfter_ms": 11735,
+        "StopAfter_ms": 24469,
+        "script_Open_ms": 11391,
+        "script_Start_ms": 11735,
+        "script_start_minus_graph_run_ms": 0,
+        "renderer_roots": [
+          9439914
+        ],
+        "renderer_matches_owned_window": true
+      },
+      {
+        "source": "episodes\\episode-02.mp4",
+        "PauseAfter_ms": null,
+        "RunAfter_ms": null,
+        "StopAfter_ms": null,
+        "script_Open_ms": null,
+        "script_Start_ms": null,
+        "script_start_minus_graph_run_ms": null,
+        "renderer_roots": [],
+        "renderer_matches_owned_window": false
+      }
+    ],
+    "max_inspection_tick_ms": 0,
+    "enum_end_results": [
+      -2147467259
+    ],
+    "renderer_capabilities": [
+      {
+        "filter": "Enhanced Video Renderer(Custom Present)",
+        "videoInterfaceResult": -2147467262,
+        "ownerResult": -2147467262,
+        "serviceResult": 0,
+        "displayResult": 0
+      },
+      {
+        "filter": "DirectSound Audio Renderer",
+        "videoInterfaceResult": -2147467262,
+        "ownerResult": -2147467262,
+        "serviceResult": -2147467262,
+        "displayResult": -2147467262
+      }
+    ],
+    "query_timeouts": 0,
+    "held_observed_ms": 11344,
+    "held_colors": [
+      "red",
+      "red"
+    ],
+    "next_color": null,
+    "next_file_open_while_held": true,
+    "graph_held_pause_ms": null,
+    "held_position_tail_range_ms": [
+      976,
+      976
+    ]
+  }
+]
