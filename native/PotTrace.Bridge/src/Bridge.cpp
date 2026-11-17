@@ -7,6 +7,9 @@
 #include <mutex>
 #include <atomic>
 #include "../include/BridgeSupport.h"
+#include "../include/GraphTimeline.h"
+#include "../include/GraphPacket.h"
+#include "../include/MpscQueue.h"
 
 namespace {
 using namespace pottrace;
@@ -14,12 +17,24 @@ std::wstring wide(std::string_view s){int n=MultiByteToWideChar(CP_UTF8,MB_ERR_I
 std::string utf8(std::wstring_view s){int n=WideCharToMultiByte(CP_UTF8,0,s.data(),static_cast<int>(s.size()),nullptr,0,nullptr,nullptr);std::string r(n,'\0');if(n)WideCharToMultiByte(CP_UTF8,0,s.data(),static_cast<int>(s.size()),r.data(),n,nullptr,nullptr);return r;}
 std::string guid(){GUID g;CoCreateGuid(&g);wchar_t value[40];StringFromGUID2(g,value,40);return utf8(std::wstring_view(value+1,36));}
 std::string utc(){SYSTEMTIME t;GetSystemTime(&t);char s[40];sprintf_s(s,"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ",t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond,t.wMilliseconds);return s;}
+std::string shiftedUtc(const std::string& stamp,int64_t deltaMs){
+ if(!deltaMs)return stamp;SYSTEMTIME t{};
+ if(sscanf_s(stamp.c_str(),"%hu-%hu-%huT%hu:%hu:%hu.%huZ",&t.wYear,&t.wMonth,&t.wDay,&t.wHour,&t.wMinute,&t.wSecond,&t.wMilliseconds)!=7)return stamp;
+ FILETIME ft{};if(!SystemTimeToFileTime(&t,&ft))return stamp;ULARGE_INTEGER ticks;ticks.LowPart=ft.dwLowDateTime;ticks.HighPart=ft.dwHighDateTime;ticks.QuadPart+=deltaMs*10000;
+ ft.dwLowDateTime=ticks.LowPart;ft.dwHighDateTime=ticks.HighPart;FileTimeToSystemTime(&ft,&t);
+ char value[40];sprintf_s(value,"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ",t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond,t.wMilliseconds);return value;
+}
 std::wstring sid(){HANDLE token=nullptr;if(!OpenProcessToken(GetCurrentProcess(),TOKEN_QUERY,&token))return {};DWORD n=0;GetTokenInformation(token,TokenUser,nullptr,0,&n);std::vector<char> b(n);GetTokenInformation(token,TokenUser,b.data(),n,&n);CloseHandle(token);LPWSTR text=nullptr;if(!ConvertSidToStringSidW(reinterpret_cast<TOKEN_USER*>(b.data())->User.Sid,&text))return {};std::wstring r=text;LocalFree(text);return r;}
 struct Raw {std::string text;ULONGLONG at;std::string stamp;};
+struct GraphRaw {GraphFact fact;std::string stamp;uint64_t lossSerial=0;};
 struct Out {long long seq;std::string json;};
 struct State {
  std::atomic<bool> stop=false,suppressed=false;std::mutex rawGate,outGate;
  std::deque<Raw> raw;size_t rawBytes=0;bool rawGap=false;
+ MpscQueue<GraphRaw,4096> graphRaw;std::atomic<size_t> graphBytes{0};GraphTimeline timeline;uint64_t graphEpoch=0;
+ std::atomic<uint64_t> graphLoss{0};uint64_t graphHandledLoss=0;
+ bool graphMode=false,positionKnown=true,durationKnown=true;
+ bool rateKnown=true,rateEstimated=false;uint64_t rateWindowFrom=0;
  std::deque<Out> outgoing;size_t outBytes=0;bool outGap=false;
  std::wstring folder,exe,data,channel,pipe;std::string instance=guid(),epoch,path;
  long long seq=0,pos=0,duration=0,ratePos=0;ULONGLONG last=0,rateAt=0;double rate=1;int warmSamples=0;std::string playState="Unknown";bool active=false;HWND hwnd=nullptr;
@@ -43,7 +58,7 @@ void emit(State& s,std::string kind,ULONGLONG now,const std::string& stamp,bool 
  std::lock_guard lock(s.outGate);
  if(s.outGap){gap=true;s.outGap=false;}
  long long seq=++s.seq;
- std::string j="{\"protocolVersion\":1,\"instanceId\":"+quote(s.instance)+",\"mediaEpoch\":"+(s.epoch.empty()?"null":quote(s.epoch))+",\"sequence\":"+std::to_string(seq)+",\"kind\":"+quote(kind)+",\"observedAtUtc\":"+quote(stamp)+",\"monotonicMs\":"+std::to_string(now)+",\"sourcePath\":"+(s.path.empty()?"null":quote(s.path))+",\"positionMs\":"+std::to_string(std::max(0LL,s.pos))+",\"durationMs\":"+std::to_string(std::max(0LL,s.duration))+",\"state\":"+quote(s.playState)+",\"rate\":"+std::to_string(s.rate)+",\"quality\":"+quote(gap?"Gap":"Estimated")+"}";
+ std::string j="{\"protocolVersion\":1,\"instanceId\":"+quote(s.instance)+",\"mediaEpoch\":"+(s.epoch.empty()?"null":quote(s.epoch))+",\"sequence\":"+std::to_string(seq)+",\"kind\":"+quote(kind)+",\"observedAtUtc\":"+quote(stamp)+",\"monotonicMs\":"+std::to_string(now)+",\"sourcePath\":"+(s.path.empty()?"null":quote(s.path))+",\"positionMs\":"+(s.positionKnown?std::to_string(std::max(0LL,s.pos)):"null")+",\"durationMs\":"+(s.durationKnown?std::to_string(std::max(0LL,s.duration)):"null")+",\"state\":"+quote(s.playState)+",\"rate\":"+(s.rateKnown?std::to_string(s.rate):"null")+",\"rateIsEstimated\":"+(s.rateEstimated?"true":"false")+",\"rateWindowStartMs\":"+(s.rateWindowFrom?std::to_string(s.rateWindowFrom):"null")+",\"quality\":"+quote(gap?"Gap":s.graphMode?"Observed":"Estimated")+"}";
  if(s.outgoing.size()>=4096||s.outBytes+j.size()>8*1024*1024){s.outGap=true;return;}
 #ifdef _DEBUG
  // Explicit fixture diagnostics only; normal builds never write event traces.
@@ -56,6 +71,7 @@ void emit(State& s,std::string kind,ULONGLONG now,const std::string& stamp,bool 
  s.outBytes+=j.size();s.outgoing.push_back({seq,std::move(j)});
 }
 void sample(State& s,ULONGLONG now){
+ if(s.graphMode)return;
  if(!s.hwnd||!IsWindow(s.hwnd))EnumWindows(findWindow,reinterpret_cast<LPARAM>(&s.hwnd));
  long long status=0,pos=0,total=0;
  if(!query(s.hwnd,0x5006,status)||!query(s.hwnd,0x5004,pos)||!query(s.hwnd,0x5002,total)){
@@ -96,6 +112,7 @@ void sample(State& s,ULONGLONG now){
  emit(s,kind,now,utc(),gap);s.last=now;if(kind=="Stopped")s.path.clear();
 }
 void callback(State& s,const Raw& raw){
+ if(s.graphMode)return;
  auto a=raw.text.find('\t'),b=raw.text.find('\t',a+1),c=raw.text.find('\t',b+1);if(a==std::string::npos||b==std::string::npos||c==std::string::npos)return;
  auto kind=raw.text.substr(0,a),path=raw.text.substr(c+1);long long total=0;
  try{total=std::stoll(raw.text.substr(a+1,b-a-1));}catch(...){return;}
@@ -125,11 +142,27 @@ void callback(State& s,const Raw& raw){
  emit(s,kind=="Pause"?"Paused":kind=="Resume"?"Resumed":kind=="Complete"?"Completed":"MediaClosed",now,raw.stamp);
  s.last=now;s.rateAt=now;s.ratePos=s.pos;if(kind=="Close"||kind=="Complete"){s.active=false;s.epoch.clear();s.path.clear();}
 }
+void graphTransitions(State& s,const std::vector<GraphTransition>& transitions,const std::string& stamp,uint64_t referenceAt){
+ for(const auto& e:transitions){
+  if(s.graphEpoch!=e.epoch){s.graphEpoch=e.epoch;s.epoch=guid();}
+  s.path=e.path;s.pos=e.position.value_or(0);s.duration=e.duration.value_or(0);
+  s.positionKnown=e.position.has_value();s.durationKnown=e.duration.has_value();
+  s.playState=e.state;s.rate=e.rate;s.active=e.kind!="MediaClosed";s.last=e.at;
+  s.rateKnown=e.rateKnown;s.rateEstimated=e.estimatedRate;s.rateWindowFrom=e.rateWindowFrom;
+  emit(s,e.kind,e.at,shiftedUtc(stamp,static_cast<int64_t>(e.at)-static_cast<int64_t>(referenceAt)),e.gap);
+ }
+}
+void graphCallback(State& s,const GraphFact& fact,const std::string& stamp){graphTransitions(s,s.timeline.apply(fact),stamp,fact.at);}
 void observe(State* p){auto& s=*p;EnumWindows(findWindow,reinterpret_cast<LPARAM>(&s.hwnd));emit(s,"InstanceStarted",GetTickCount64(),utc());ULONGLONG next=0;bool wasSuppressed=false;
  while(!s.stop){
   std::deque<Raw> batch;bool gap=false;{std::lock_guard lock(s.rawGate);batch.swap(s.raw);s.rawBytes=0;gap=s.rawGap;s.rawGap=false;}
   if(gap)emit(s,"Gap",GetTickCount64(),utc(),true);
   for(const auto& raw:batch)callback(s,raw);
+  GraphRaw raw;for(int count=0;count<4096&&s.graphRaw.pop(raw);++count){
+   s.graphBytes-=sizeof(GraphRaw)+raw.fact.path.size();
+   if(raw.lossSerial!=s.graphHandledLoss){graphTransitions(s,s.timeline.interrupt(raw.fact.at),raw.stamp,raw.fact.at);s.graphHandledLoss=raw.lossSerial;}
+   graphCallback(s,raw.fact,raw.stamp);
+  }
   if(s.suppressed){std::lock_guard lock(s.outGate);s.outgoing.clear();s.outBytes=0;s.active=false;wasSuppressed=true;Sleep(20);continue;}
   if(wasSuppressed){s.epoch=guid();s.active=false;wasSuppressed=false;}
   auto now=GetTickCount64();if(now>=next){sample(s,now);next=now+(s.playState=="Paused"?500:250);}
@@ -182,6 +215,7 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* byte
  auto folder=wide(std::string_view(reinterpret_cast<const char*>(bytes),length));if(folder.empty())return -1;
  HMODULE pinned=nullptr;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(&PotTrace_Initialize),&pinned);
  state=new State;state->folder=std::move(folder);
+ state->graphMode=ini(state->folder+L"\\pottrace-bridge.ini",L"SourceMode")==L"DirectShow";
  // CreateThread does not wait for the thread's CRT startup handshake. Waiting
  // here can stall the host's extension dispatch while it holds internal locks.
  bool observeEnabled=true,sendEnabled=true;
@@ -198,6 +232,7 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* byte
 }
 extern "C" __declspec(dllexport) int32_t PotTrace_Enqueue(const uint8_t* bytes,uint32_t length){
  auto p=state;if(!p||p->stop||!bytes||length>262144)return -1;
+ if(p->graphMode)return 0;
 #ifdef _DEBUG
  testTrace(L"POTTRACE_TEST_RAW_TRACE",std::string_view(reinterpret_cast<const char*>(bytes),length));
 #endif
@@ -205,3 +240,20 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Enqueue(const uint8_t* bytes,u
  p->raw.push_back({std::string(reinterpret_cast<const char*>(bytes),length),GetTickCount64(),utc()});p->rawBytes+=length;return 0;
 }
 extern "C" __declspec(dllexport) int32_t PotTrace_Shutdown(){if(state)state->stop=true;return 0;}
+extern "C" __declspec(dllexport) int32_t PotTrace_Graph(const PotTraceGraphPacket* packet){
+ auto p=state;if(!p||p->stop||!p->graphMode||!packet||packet->size!=sizeof(PotTraceGraphPacket)||packet->version!=2||packet->kind>4||packet->rateFlags>15||packet->rateWindowFrom>packet->at||packet->pathLength>131072||(!packet->path&&packet->pathLength))return -1;
+ auto now=GetTickCount64();if(packet->at>now||packet->begin>packet->at)return -1;
+ try{
+  GraphFact f;f.kind=static_cast<GraphFactKind>(packet->kind);f.binding=packet->binding;f.generation=packet->generation;f.begin=packet->begin;f.at=packet->at;f.state=static_cast<GraphState>(packet->state);f.qualified=packet->qualified!=0;
+  if(packet->pathLength)f.path.assign(packet->path,packet->pathLength);
+  if(packet->position>=0)f.position=packet->position;if(packet->duration>=0)f.duration=packet->duration;f.rate=packet->rate;
+  f.rateKnown=(packet->rateFlags&1)!=0;f.estimatedRate=(packet->rateFlags&2)!=0;f.rateChange=(packet->rateFlags&4)!=0;f.rateWindowFrom=packet->rateWindowFrom;
+  f.positionDiscontinuity=(packet->rateFlags&8)!=0;
+  FILETIME filetime;GetSystemTimeAsFileTime(&filetime);ULARGE_INTEGER ticks;ticks.LowPart=filetime.dwLowDateTime;ticks.HighPart=filetime.dwHighDateTime;ticks.QuadPart-=(now-packet->at)*10000;
+  filetime.dwLowDateTime=ticks.LowPart;filetime.dwHighDateTime=ticks.HighPart;SYSTEMTIME time;FileTimeToSystemTime(&filetime,&time);char stamp[40];sprintf_s(stamp,"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ",time.wYear,time.wMonth,time.wDay,time.wHour,time.wMinute,time.wSecond,time.wMilliseconds);
+  GraphRaw entry{std::move(f),stamp,p->graphLoss.load()};
+  const auto bytes=sizeof(GraphRaw)+entry.fact.path.size();
+  if(p->graphBytes.fetch_add(bytes)+bytes>8*1024*1024){p->graphBytes-=bytes;++p->graphLoss;return 1;}
+  if(!p->graphRaw.push(std::move(entry))){p->graphBytes-=bytes;++p->graphLoss;return 1;}return 0;
+ }catch(...){++p->graphLoss;return -1;}
+}

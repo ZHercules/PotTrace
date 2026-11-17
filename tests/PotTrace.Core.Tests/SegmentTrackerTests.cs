@@ -33,11 +33,13 @@ public class SegmentTrackerTests
         var s=new Scenario();s.Open();var r=s.Send(6000,6000,PlaybackState.Stopped,PlaybackEventKind.Stopped);
         Assert.Empty(r.Segments);
     }
-    [Fact] public void RateChangeCreatesBoundaryButKeepsRealTime()
+    [Fact] public void RateChangeKeepsContinuousPlaybackAndRealTime()
     {
         var s=new Scenario();s.Open();s.Send(6000,6000,kind:PlaybackEventKind.RateChanged,rate:2);
         var r=s.Send(12000,18000,PlaybackState.Paused,PlaybackEventKind.Paused,2);
-        Assert.Equal(2,r.Segments.Count);Assert.Equal(12000,r.Segments.Sum(x=>x.PlayedMs));
+        var segment=Assert.Single(r.Segments);Assert.Equal(12000,segment.PlayedMs);
+        Assert.Equal(1.5d,segment.Rate);Assert.True(segment.RateIsEstimated);
+        Assert.Single(r.Timeline,e=>e.Kind=="RateChanged");
     }
     [Fact] public void HalfOpenIntervalsDoNotDoubleCountAdjacentEndpoints()
     {

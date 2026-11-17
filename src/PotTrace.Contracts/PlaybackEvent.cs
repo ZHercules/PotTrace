@@ -1,6 +1,6 @@
 namespace PotTrace.Contracts;
 
-public enum PlaybackEventKind { InstanceStarted, MediaOpened, Snapshot, Paused, Resumed, Seeked, RateChanged, BufferingStarted, BufferingEnded, Completed, Stopped, MediaClosed, Suspended, Gap, InstanceExited }
+public enum PlaybackEventKind { InstanceStarted, MediaOpened, Snapshot, Paused, Resumed, Seeked, RateChanged, BufferingStarted, BufferingEnded, Completed, Stopped, MediaClosed, Suspended, Gap, InstanceExited, PositionDiscontinuity }
 public enum PlaybackState { Unknown, Playing, Paused, Buffering, Stopped }
 public enum ObservationQuality { Observed, Estimated, Gap }
 
@@ -19,5 +19,7 @@ public sealed record PlaybackEvent
     public long? DurationMs { get; init; }
     public PlaybackState State { get; init; }
     public double? Rate { get; init; }
+    public bool RateIsEstimated { get; init; }
+    public long? RateWindowStartMs { get; init; }
     public ObservationQuality Quality { get; init; }
 }

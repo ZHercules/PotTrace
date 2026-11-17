@@ -40,6 +40,12 @@ public sealed class HistoryRepository
     {using var c=database.Open();using var cmd=c.CreateCommand();cmd.CommandText=$"SELECT g.Payload FROM Segment g JOIN Session s ON s.Id=g.SessionId WHERE {Where} ORDER BY s.StartedUtc,g.StartMs";Filter(cmd,filter);return await ReadJson<SegmentRecord>(cmd,ct);}
     public async Task<IReadOnlyList<TimelineEventRecord>> GetTimelineAsync(Guid sessionId,CancellationToken ct)
     {using var c=database.Open();using var cmd=Database.Command(c,null,"SELECT Payload FROM TimelineEvent WHERE SessionId=$id ORDER BY Sequence",("$id",sessionId.ToString()));return await ReadJson<TimelineEventRecord>(cmd,ct);}
+    public async Task<IReadOnlyList<TimelineEventRecord>> GetAllTimelineAsync(HistoryFilter filter,CancellationToken ct)
+    {
+        using var c=database.Open();using var cmd=c.CreateCommand();
+        cmd.CommandText=$"SELECT e.Payload FROM TimelineEvent e JOIN Session s ON s.Id=e.SessionId WHERE {Where} ORDER BY s.StartedUtc,e.Sequence";Filter(cmd,filter);
+        return await ReadJson<TimelineEventRecord>(cmd,ct);
+    }
     public async Task<IReadOnlyList<DailyUsage>> GetDailyUsageAsync(DailyUsageFilter filter,CancellationToken ct)
     {
         using var c=database.Open();using var cmd=Database.Command(c,null,"SELECT d.Date,sum(d.PlayedMs),sum(d.ShortPlayedMs) FROM SessionDay d JOIN Session s ON s.Id=d.SessionId WHERE s.Valid=1 AND d.Date >= $from AND d.Date <= $to GROUP BY d.Date ORDER BY d.Date",("$from",filter.From.ToString("yyyy-MM-dd")),("$to",filter.To.ToString("yyyy-MM-dd")));

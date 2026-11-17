@@ -19,8 +19,10 @@ public sealed record SessionRecord
     public string? EndReason {get;init;}
 }
 public sealed record SessionDayRecord(Guid SessionId,DateOnly Date,long StayMs,long PlayedMs,long ShortPlayedMs);
-public sealed record SegmentRecord(Guid SegmentId,Guid SessionId,Guid SourceId,int Order,DateTimeOffset StartedUtc,DateTimeOffset EndedUtc,long StartMs,long EndMs,long PlayedMs,double Rate,string EndReason);
-public sealed record TimelineEventRecord(Guid SessionId,long Sequence,DateTimeOffset AtUtc,string Kind,long? PositionMs);
+public sealed record SegmentRecord(Guid SegmentId,Guid SessionId,Guid SourceId,int Order,DateTimeOffset StartedUtc,DateTimeOffset EndedUtc,long StartMs,long EndMs,long PlayedMs,double? Rate,string EndReason)
+{public bool RateIsEstimated {get;init;}}
+public sealed record TimelineEventRecord(Guid SessionId,long Sequence,DateTimeOffset AtUtc,string Kind,long? PositionMs)
+{public DateTimeOffset? RateWindowStartUtc {get;init;} public bool RateIsEstimated {get;init;}}
 public sealed record HeatInterval(Guid SourceId,long StartMs,long EndMs,int Count);
 public sealed record EngineUpdate(IReadOnlyList<SessionRecord> Sessions,IReadOnlyList<SessionDayRecord> Days,IReadOnlyList<SegmentRecord> Segments,IReadOnlyList<TimelineEventRecord> Timeline)
 {

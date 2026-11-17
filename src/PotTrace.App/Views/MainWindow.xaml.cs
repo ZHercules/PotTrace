@@ -81,6 +81,9 @@ public partial class MainWindow:Window
         {
             var segments=await repository.GetSegmentsAsync(row.Record.SessionId,default);
             if((Sessions.SelectedItem as SessionRow)?.Record.SessionId!=row.Record.SessionId)return;
+            // A session and its default heatmap must refer to the same source,
+            // including when identical filenames came from different folders.
+            Sources.SelectedItem=Sources.Items.Cast<SourceRow>().FirstOrDefault(x=>x.Id==row.Record.SourceId);
             Notice.Text=MainViewModel.DetailNotice(row.Record)+$"  短片段合计：{Duration(row.Record.ShortPlayedMs)}";
             Segments.ItemsSource=segments.Select(x=>new SegmentRow(x)).ToArray();Timeline.SetSegments(segments);
         });

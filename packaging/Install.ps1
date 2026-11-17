@@ -1,4 +1,4 @@
-param(
+﻿param(
  [Parameter(Mandatory=$true)][string]$PotPlayerPath,
  [string]$PackagePath=$PSScriptRoot,
  [string]$InstallRoot=(Join-Path $env:LOCALAPPDATA 'Programs\PotTrace'),
@@ -12,7 +12,7 @@ $DataRoot=[IO.Path]::GetFullPath($DataRoot).TrimEnd('\')
 if(-not (Test-Path -LiteralPath (Join-Path $PotPlayerPath 'PotPlayerMini64.exe'))){throw '请选择包含 PotPlayerMini64.exe 的 64 位 PotPlayer 文件夹。'}
 $running=Get-Process PotPlayerMini64,PotTrace -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path.StartsWith($PotPlayerPath+'\',[StringComparison]::OrdinalIgnoreCase) -or $_.Path.StartsWith($InstallRoot+'\',[StringComparison]::OrdinalIgnoreCase)) }
 if($running){throw '请先退出此目录的 PotPlayer 和 PotTrace，再运行安装程序。'}
-$manifest=Get-Content -LiteralPath (Join-Path $PackagePath 'manifest.json') -Raw | ConvertFrom-Json
+$manifest=Get-Content -LiteralPath (Join-Path $PackagePath 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if($manifest.Version -notmatch '^\d+\.\d+\.\d+([-a-z0-9.]*)?$'){throw '包版本无效。'}
 $pluginNames=@('PotTrace.Bridge.dll','PlaybackStatistics - PotTrace.as')
 $files=@($manifest.Files)
@@ -27,7 +27,7 @@ foreach($file in $files){
 foreach($required in @('app/PotTrace.exe','plugin/PotTrace.Bridge.dll','plugin/PlaybackStatistics - PotTrace.as')){if($files.Path -notcontains $required){throw "包中缺少 $required"}}
 $pluginDir=Join-Path $PotPlayerPath 'Extension\Playback\Statistics'
 $ownership=Join-Path $pluginDir 'pottrace-install.json'
-$previous=if(Test-Path -LiteralPath $ownership){Get-Content -LiteralPath $ownership -Raw | ConvertFrom-Json}else{$null}
+$previous=if(Test-Path -LiteralPath $ownership){Get-Content -LiteralPath $ownership -Raw -Encoding UTF8 | ConvertFrom-Json}else{$null}
 if($previous -and $previous.InstallRoot -ne $InstallRoot){throw '升级必须使用原程序目录；迁移前请先卸载。'}
 foreach($name in $pluginNames+@('pottrace-bridge.ini')){if((Test-Path -LiteralPath (Join-Path $pluginDir $name)) -and -not $previous){throw "发现同名但未登记的文件，请先备份处理：$name"}}
 $versionDir=[IO.Path]::GetFullPath((Join-Path $InstallRoot ('versions\'+$manifest.Version+'-'+[Guid]::NewGuid().ToString('N'))))

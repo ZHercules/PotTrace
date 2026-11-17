@@ -7,7 +7,7 @@ from window_probe import windows,u
 site.addsitedir(r'D:\codex\PotTrace\.tools\python')
 from pywinauto import Desktop
 import win32gui,win32con
-parser=argparse.ArgumentParser();parser.add_argument('--template',action='store_true');parser.add_argument('--preload',action='store_true');args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--template',action='store_true');parser.add_argument('--preload',action='store_true');parser.add_argument('--preview',action='store_true');args=parser.parse_args()
 EXE=Path(os.environ.get('POTTRACE_TEST_PLAYER',str(ROOT/'out/player/PotPlayerMini64.exe'))).resolve()
 if not EXE.is_relative_to((ROOT/'out').resolve()):raise SystemExit('Isolated player required')
 ini=EXE.parent/'PotPlayerMini64.ini';before=ini.read_bytes()
@@ -27,6 +27,12 @@ try:
  u.PostMessageW(h,0x100,0x74,0);u.PostMessageW(h,0x101,0x74,0)
  pref=wait(lambda:next((r['hwnd'] for r in windows(p.pid) if r['cls']=='#32770'),None))
  ui=Desktop(backend='uia').window(handle=pref)
+ if args.preview:
+  ui.child_window(title='Playback',control_type='TreeItem').wrapper_object().select();time.sleep(.3)
+  report['controls']=[{'name':c.window_text(),'type':c.element_info.control_type,'id':c.element_info.automation_id} for c in ui.descendants() if c.element_info.control_type in ('CheckBox','ComboBox')]
+  control=ui.child_window(title='Show thumbnail previews on nav. bar',control_type='CheckBox').wrapper_object()
+  if not control.get_toggle_state():control.toggle()
+  ui.child_window(title='OK',control_type='Button').wrapper_object().invoke();raise SystemExit(0)
  if args.preload:
   ui.child_window(title='Playback',control_type='TreeItem').wrapper_object().expand();time.sleep(.2)
   report['tree']=[c.window_text() for c in ui.descendants(control_type='TreeItem')]

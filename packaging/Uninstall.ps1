@@ -1,10 +1,10 @@
-param([Parameter(Mandatory=$true)][string]$PotPlayerPath,[switch]$RemoveHistory)
+﻿param([Parameter(Mandatory=$true)][string]$PotPlayerPath,[switch]$RemoveHistory)
 $ErrorActionPreference='Stop'
 $PotPlayerPath=[IO.Path]::GetFullPath($PotPlayerPath).TrimEnd('\')
 $pluginDir=Join-Path $PotPlayerPath 'Extension\Playback\Statistics'
 $recordPath=Join-Path $pluginDir 'pottrace-install.json'
 if(-not (Test-Path -LiteralPath $recordPath)){throw '此目录没有 PotTrace 安装登记；未删除任何文件。'}
-$record=Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
+$record=Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $root=[IO.Path]::GetFullPath($record.InstallRoot).TrimEnd('\')
 $running=Get-Process PotPlayerMini64,PotTrace -ErrorAction SilentlyContinue | Where-Object {$_.Path -and ($_.Path.StartsWith($PotPlayerPath+'\',[StringComparison]::OrdinalIgnoreCase) -or $_.Path.StartsWith($root+'\',[StringComparison]::OrdinalIgnoreCase))}
 if($running){throw '请先退出此目录的 PotPlayer 和 PotTrace，再卸载。'}

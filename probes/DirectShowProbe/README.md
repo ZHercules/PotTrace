@@ -1,6 +1,6 @@
 # DirectShow 隔离取证原型
 
-这不是安装包，也不产生正式播放历史。当前结论：已在本机隔离副本证明部分来源/状态采集可行，**尚未证明通用的当前影片载入时间，禁止部署到正式播放器**。详见 [验证报告](../../docs/directshow-validation.md)。
+这不是安装包。默认只记录诊断；`--ingest` 会在本次 `out/graph-probe-*/data` 中启动真实宿主并写入实验历史，退出后恢复副本配置和桥接文件。**通用兼容性及部署验收尚未完成，禁止部署到正式播放器**。来源原型见 [验证报告](../../docs/directshow-validation.md)，在线链路见 [接入进展](../../docs/graph-ingestion-validation.md)。
 
 ## 范围与隔离
 
@@ -25,6 +25,10 @@ python probes/DirectShowProbe/run_graph_probe.py --format mp4 --preload --held-p
 python probes/DirectShowProbe/run_graph_probe.py --format mp4 --preload --held-preload cancel
 python probes/DirectShowProbe/run_graph_probe.py --format mkv --error-reopen
 
+# 先构建 Debug bridge 和真实 WPF host。详细采集写入独立 SQLite；
+# 覆盖暂停停留、重复片段、排队排除、2倍速、同名切换及自然下一集。
+python probes/DirectShowProbe/run_graph_probe.py --format mp4 --ingest --detailed-flow --preload --held-preload resume --presentation
+
 # 可选：另一个已准备好的隔离版本，仍须在 out 内。
 $env:POTTRACE_TEST_PLAYER = (Resolve-Path out/player-current/PotPlayerMini64.exe).Path
 python probes/DirectShowProbe/run_graph_probe.py --format mkv --preload --error-reopen
@@ -48,3 +52,11 @@ python probes/DirectShowProbe/summarize_probe.py out/graph-probe-<id>
 - 红/蓝画面与已打开文件句柄是测试的独立旁证。文件句柄只证明提前打开，不能证明下一集已经解码就绪；Windows 句柄枚举缺失也不能证明未打开。截图不是产品的身份来源。
 
 暂停用例会等待超过 11 秒。原生 Pause→Run 边界包含截图和采样耗时，因此实际暂停可能长于 11 秒；不能把固定 sleep 时长当作统计真值。外部位置查询有缓存，刚暂停后仍可能更新一次；检查稳定后的区间，不能把缓存更新算成暂停时播放。
+
+## Additional online checks (experimental)
+
+`run_graph_probe.py --format mp4 --ingest --startup-only --suspend-probe` suspends only its owned isolated player for eight seconds and checks that unknown time does not qualify a short opening. It does not suspend Windows.
+
+`run_graph_probe.py --format mp4 --ingest --startup-only --rate-transition-probe` exercises live 1x/2x/1x transitions. This currently **fails** the detailed rate-boundary assertion; it must not be presented as a deployment pass.
+
+`review_recorded_history.py out/graph-probe-<id>` opens a SQLite backup of a completed detailed online fixture in the real WPF UI and validates same-name summaries, chronological repeated segments, source-specific heat and source selection. It does not edit the original evidence database.

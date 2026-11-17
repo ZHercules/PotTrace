@@ -1,6 +1,6 @@
 # PotTrace 验收记录
 
-本文件记录已执行的证据，不将待测项目描述为通过。当前为开发预览，最终验收尚未结束。
+本文件记录前阶段已执行的证据，不将待测项目描述为通过。当前为开发预览，稳定版验收尚未结束。最新开发分支验收见 [develop 合并验证](develop-validation.md)，图内链路证据见 [DirectShow 在线统计](graph-ingestion-validation.md)。
 
 发行候选：`0.1.0-preview.1`，本地自包含 ZIP。最终 Release 检查：57 项托管测试（Contracts 5、Core 30、Storage 11、App 11）、1 组原生行为测试、5 项安装测试全部通过，构建无警告/错误。
 

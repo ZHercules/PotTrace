@@ -5,6 +5,15 @@ namespace PotTrace.Contracts.Tests;
 
 public class ProtocolTests
 {
+    [Theory]
+    [InlineData(-1,true)]
+    [InlineData(1001,true)]
+    [InlineData(500,false)]
+    public void InvalidRateWindowIsRejected(long start,bool estimated)
+    {
+        var e=new PlaybackEvent{InstanceId=Guid.NewGuid(),Sequence=1,MonotonicMs=1000,Kind=PlaybackEventKind.RateChanged,RateIsEstimated=estimated,RateWindowStartMs=start};
+        Assert.False(EventValidator.Validate(e).IsValid);
+    }
     [Fact]
     public async Task UnicodePathRoundTripsAcrossShortReads()
     {

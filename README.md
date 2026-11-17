@@ -1,12 +1,13 @@
 # PotTrace
 
-PotPlayer 的本地播放统计扩展：AngelScript 回调与 x64 桥接器采集，独立 WPF 窗口查询，SQLite 保存历史。
+PotPlayer 的本地播放统计扩展：AngelScript 回调与 x64 桥接器采集，独立 WPF 窗口查询，SQLite 保存历史。另有隔离验证中的 DirectShow 图内采集链路。
 
-当前状态：**开发预览，尚未完成稳定版验收**。已实现核心统计、后台生命周期、界面与安装包；PotPlayer 启动回调偶发延迟仍会影响接近 10 秒的首次打开判断，详见[验收记录](docs/acceptance.md)。没有改动本机 `E:\pot\PotPlayer` 的正式安装。
+当前状态：**开发预览，尚未完成稳定版验收**。脚本采集仍有启动回调延迟限制；DirectShow 实验链路已接入真实统计引擎和 SQLite，在本机 EVR 配置验证首开、换片、自动下一集及详细记录，详见[图内采集验收](docs/graph-ingestion-validation.md)和[本次 develop 合并验证](docs/develop-validation.md)。实验 AX 不包含在安装包中，未部署到日用 PotPlayer。
 
 - 精简：同文件名归并打开次数与实际播放时长。
 - 详细：独立观看会话、现实时间轴、重复片段、按来源分开的高频区间及次数。
 - 当前影片停留严格超过 10 秒才有效；暂停只增加停留。连续实际播放严格超过 5 秒才成为详细片段。
+- 连续变速不切分播放片段；估计速度及变速观测窗口可随 JSON 时间轴导出，未知倍率不填成 1。
 - 首次在 PotPlayer 勾选一次扩展，以后自动运行；支持暂停统计、全局快捷键、导出、备份、恢复、删除和目录排除。
 
 安装和首次启用步骤见[安装说明](docs/installation.md)。发行包为 Windows x64 自包含目录，不要求另装 .NET；只包含 PotTrace，不包含 PotPlayer。

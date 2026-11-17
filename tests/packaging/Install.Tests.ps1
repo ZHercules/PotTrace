@@ -1,4 +1,23 @@
-$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+﻿$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+Describe 'Windows PowerShell entry points' {
+    It 'parses installer and publishing scripts without encoding errors' {
+        foreach($relative in @('packaging\Install.ps1','packaging\Uninstall.ps1','scripts\publish.ps1')) {
+            $tokens=$null;$parseErrors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repo $relative),[ref]$tokens,[ref]$parseErrors)
+            @($parseErrors).Count | Should Be 0
+        }
+    }
+    It 'uses the repository-local SDK in a normal checkout' {
+        $checkout=Join-Path $TestDrive 'normal-checkout'
+        New-Item -ItemType Directory -Path (Join-Path $checkout 'scripts'),(Join-Path $checkout '.tools\dotnet') -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $repo 'scripts\dotnet.ps1') -Destination (Join-Path $checkout 'scripts\dotnet.ps1')
+        # A known executable witnesses which SDK path was actually launched.
+        Copy-Item -LiteralPath (Join-Path $env:SystemRoot 'System32\where.exe') -Destination (Join-Path $checkout '.tools\dotnet\dotnet.exe')
+        $output=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checkout 'scripts\dotnet.ps1') powershell.exe 2>&1
+        $LASTEXITCODE | Should Be 0
+        ($output -join "`n") | Should Match 'WindowsPowerShell.*powershell.exe'
+    }
+}
 Describe 'PotTrace owned installation' {
     BeforeEach {
         $caseRoot = Join-Path $TestDrive ([Guid]::NewGuid().ToString('N'))

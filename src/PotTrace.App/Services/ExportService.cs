@@ -13,7 +13,8 @@ public static class ExportService
         if(json)
         {
             var segments=await repository.GetAllSegmentsAsync(filter,ct);
-            await File.WriteAllTextAsync(path,JsonSerializer.Serialize(new {RuleVersion=1,Sessions=sessions,Segments=segments},new JsonSerializerOptions{WriteIndented=true}),new UTF8Encoding(false),ct);
+            var timeline=await repository.GetAllTimelineAsync(filter,ct);
+            await File.WriteAllTextAsync(path,JsonSerializer.Serialize(new {RuleVersion=1,Sessions=sessions,Segments=segments,Timeline=timeline},new JsonSerializerOptions{WriteIndented=true}),new UTF8Encoding(false),ct);
         }
         else
         {

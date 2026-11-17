@@ -43,11 +43,15 @@ public sealed class SessionTracker
             bool gap=e.Kind is PlaybackEventKind.Gap or PlaybackEventKind.Suspended || e.Quality==ObservationQuality.Gap;
             long stay=!gap && previous.State is PlaybackState.Playing or PlaybackState.Paused ? dt : 0;
             long played=0;
-            if(!gap && previous.State==PlaybackState.Playing && e.Kind!=PlaybackEventKind.Seeked && previous.PositionMs is {} from && e.PositionMs is {} to)
+            if(!gap && previous.State==PlaybackState.Playing && e.Kind is not (PlaybackEventKind.Seeked or PlaybackEventKind.PositionDiscontinuity) && previous.PositionMs is {} from && e.PositionMs is {} to)
             {
-                double rate=previous.Rate??1;
                 long delta=to-from;
-                if(delta>0 && Math.Abs(delta-dt*rate)<=Math.Max(500,dt*rate*.20))
+                // Unknown speed is not normal speed. Only short, advancing
+                // samples within the existing absolute tolerance may bridge it.
+                bool plausible=previous.Rate is {} rate
+                    ? Math.Abs(delta-dt*rate)<=Math.Max(500,dt*rate*.20)
+                    : dt>0 && dt<=500 && delta<=500;
+                if(delta>0 && plausible)
                     played=dt;
             }
             current.Record=current.Record with {StayMs=current.Record.StayMs+stay,PlayedMs=current.Record.PlayedMs+played};
@@ -56,7 +60,9 @@ public sealed class SessionTracker
             current.Segments.Observe(current.Record,previous,e,played);
             RefreshShortDays(current);
             if(e.Kind!=PlaybackEventKind.Snapshot)
-                current.Timeline.Add(new(current.Record.SessionId,e.Sequence,e.ObservedAtUtc,e.Kind.ToString(),e.PositionMs));
+                current.Timeline.Add(new(current.Record.SessionId,e.Sequence,e.ObservedAtUtc,e.Kind.ToString(),e.PositionMs)
+                {RateIsEstimated=e.RateIsEstimated,RateWindowStartUtc=e.RateWindowStartMs is {} start&&start>=0&&start<=e.MonotonicMs
+                    ? e.ObservedAtUtc.AddMilliseconds(start-e.MonotonicMs):null});
             current.Last=e;
         }
         if(e.Kind is PlaybackEventKind.Completed or PlaybackEventKind.Stopped or PlaybackEventKind.MediaClosed or PlaybackEventKind.InstanceExited)
