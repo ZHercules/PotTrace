@@ -18,6 +18,8 @@ public partial class App
     private System.Windows.Forms.NotifyIcon? tray;
     private string dataDirectory="";
     private bool stopping;
+    private CapturePolicyStore? capturePolicy;
+    private readonly SemaphoreSlim settingsGate=new(1,1);
     private readonly Services.SourceResolver sources=new();
     private Services.HotkeyManager? hotkey;
     public bool HotkeyRegistered=>hotkey?.Registered??false;
@@ -45,6 +47,12 @@ public partial class App
             }
             if(e.Args.Contains("--exit")){Shutdown();return;}
             SettingsStore=new(Path.Combine(dataDirectory,"settings.json"));Settings=await SettingsStore.LoadAsync(default);
+            capturePolicy=CapturePolicyStore.ForBackend(Path.Combine(dataDirectory,"capture-policy.json"),e.Args.Contains("--collector"));
+            if(capturePolicy is not null)
+            {
+                var policy=await capturePolicy.LoadAsync(default);
+                Settings=Settings with {Enabled=policy.Enabled,RecordingPaused=policy.RecordingPaused};
+            }
             ApplyTheme();
             hotkey=new(ShowHistory);hotkey.Register(Settings.HotKeyModifiers,Settings.HotKey);
             Database=await Database.CreateAsync(Path.Combine(dataDirectory,"pottrace.db"));
@@ -59,13 +67,17 @@ public partial class App
                     return ignored.CommittedSequence;
                 }
                 item=sources.Resolve(item);var result=await Writer.ApplyAsync(item,ct);Latest=item;
-                Status=item.SourcePath is null?"已连接，等待当前影片回调":"正在采集";return result.CommittedSequence;
+                Status=!Settings.Enabled?"统计已关闭":Settings.RecordingPaused?"统计已暂停":item.SourcePath is null?"已连接，等待当前影片回调":"正在采集";return result.CommittedSequence;
             },async (id,ct)=>{sources.Forget(id);await Writer.DisconnectAsync(id,ct);},command=>
             {Dispatcher.BeginInvoke(new Action(async ()=>{if(command=="Show")ShowHistory();else if(command=="Exit")await StopAsync(true);}));return Task.CompletedTask;});
             server.Error+=ex=>{Status="采集连接异常，请查看诊断日志";Log(ex);};server.Start();
             tray=new(){Icon=System.Drawing.SystemIcons.Application,Text="PotTrace 播放统计",Visible=true};
             var menu=new System.Windows.Forms.ContextMenuStrip();menu.Items.Add("播放统计",null,(_,_)=>ShowHistory());
-            menu.Items.Add("暂停 / 恢复统计",null,async (_,_)=>await SaveSettingsAsync(Settings with {RecordingPaused=!Settings.RecordingPaused}));
+            menu.Items.Add("暂停 / 恢复统计",null,async (_,_)=>
+            {
+                try{await SaveSettingsAsync(Settings with {Enabled=true,RecordingPaused=Settings.Enabled&&!Settings.RecordingPaused});}
+                catch(Exception ex){Log(ex);System.Windows.MessageBox.Show("统计开关未能保存，请重试。","PotTrace");}
+            });
             menu.Items.Add("退出 PotTrace",null,async (_,_)=>await StopAsync(true));tray.ContextMenuStrip=menu;tray.DoubleClick+=(_,_)=>ShowHistory();
             if(!e.Args.Contains("--background"))ShowHistory();
             timer=new DispatcherTimer(TimeSpan.FromMilliseconds(500),DispatcherPriority.Background,async (_,_)=>{if(lifetime.ShouldExit)await StopAsync(false);},Dispatcher);timer.Start();
@@ -75,10 +87,19 @@ public partial class App
     }
     public async Task SaveSettingsAsync(CaptureSettings settings)
     {
+        await settingsGate.WaitAsync();
+        try
+        {
+        if(capturePolicy is not null)
+        {
+            await capturePolicy.UpdateAsync(settings.Enabled,settings.RecordingPaused,default);
+        }
         await SettingsStore.SaveAsync(settings,default);Settings=settings;
         hotkey?.Register(settings.HotKeyModifiers,settings.HotKey);
         Writer.SetNextCaptureMode(settings.Mode);await Writer.SetCaptureEnabledAsync(!settings.RecordingPaused&&settings.Enabled,default);
-        Status=settings.RecordingPaused?"统计已暂停":"正在采集";
+        Status=!settings.Enabled?"统计已关闭":settings.RecordingPaused?"统计已暂停":"正在采集";
+        }
+        finally {settingsGate.Release();}
     }
     public void ShowHistory()
     {

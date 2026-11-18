@@ -46,8 +46,8 @@ public partial class MainWindow:Window
     }
     private void UpdateStatus()
     {
-        PauseButton.Content=host.Settings.RecordingPaused?"恢复统计":"暂停统计";
-        StatusText.Text=$"{(host.Settings.RecordingPaused?"统计已暂停":host.PlayerCount==0?"等待 PotPlayer 连接":host.Status)}  ·  {host.PlayerCount} 个播放器  ·  {(host.Settings.Mode==CaptureMode.Simple?"精简":"详细")}采集  ·  时长按实际播放时间累计";
+        PauseButton.Content=!host.Settings.Enabled?"启用统计":host.Settings.RecordingPaused?"恢复统计":"暂停统计";
+        StatusText.Text=$"{(!host.Settings.Enabled?"统计已关闭":host.Settings.RecordingPaused?"统计已暂停":host.PlayerCount==0?"等待 PotPlayer 连接":host.Status)}  ·  {host.PlayerCount} 个播放器  ·  {(host.Settings.Mode==CaptureMode.Simple?"精简":"详细")}采集  ·  时长按实际播放时间累计";
         CurrentText.Text=host.Latest?.SourcePath is {} path?$"当前：{Path.GetFileName(path)}  ·  {host.Latest.State}  ·  位置与倍速使用采样估算":"首次启用：PotPlayer → 选项 → 扩展功能 → 播放统计 → 勾选 PotTrace";
         var active=host.Writer.Activity.LastOrDefault();if(active is not null)CurrentText.Text+="  ·  "+MainViewModel.SessionStatus(active);
     }
@@ -104,9 +104,9 @@ public partial class MainWindow:Window
         if(match is not null){Segments.SelectedItem=match;Segments.ScrollIntoView(match);}
     }
     private void ZoomChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(Timeline is not null)Timeline.Width=Math.Max(360,DetailPanel.ActualWidth-22)*e.NewValue;}
-    private async void PauseClick(object sender,RoutedEventArgs e)=>await Run(async ()=>{await host.SaveSettingsAsync(host.Settings with {RecordingPaused=!host.Settings.RecordingPaused});UpdateStatus();});
+    private async void PauseClick(object sender,RoutedEventArgs e)=>await Run(async ()=>{await host.SaveSettingsAsync(host.Settings with {Enabled=true,RecordingPaused=host.Settings.Enabled&&!host.Settings.RecordingPaused});UpdateStatus();});
     private void SettingsClick(object sender,RoutedEventArgs e){new SettingsWindow(host){Owner=this}.ShowDialog();UpdateStatus();}
-    private void RulesClick(object sender,RoutedEventArgs e)=>MessageBox.Show(this,"当前影片停留严格超过 10 秒才计为一次打开；暂停只增加停留。\n累计时长为实际播放经过时间，重复观看重复累计。\n详细片段必须连续实际播放超过 5 秒，暂停、跳转、变速、失联均截断。\n同名（含扩展名、忽略大小写）归并影片；热度按实际来源分别计算。\n采集模式从下一会话生效；旧精简记录没有明细。\n采样存在边界误差，不提供帧级精度。","统计规则 · v1");
+    private void RulesClick(object sender,RoutedEventArgs e)=>MessageBox.Show(this,"当前影片停留严格超过 10 秒才计为一次打开；暂停只增加停留。\n累计时长为实际播放经过时间，重复观看重复累计。\n详细片段必须连续实际播放超过 5 秒，暂停、跳转、失联会截断；连续变速作为片段内事件记录。\n同名（含扩展名、忽略大小写）归并影片；热度按实际来源分别计算。\n采集模式从下一会话生效；旧精简记录没有明细。\n采样存在边界误差，不提供帧级精度。","统计规则 · v1");
     private async void ExportClick(object sender,RoutedEventArgs e)
     {
         var dialog=new Microsoft.Win32.SaveFileDialog{Filter="JSON 明细|*.json|CSV 会话|*.csv",FileName="PotTrace-history"};if(dialog.ShowDialog(this)!=true)return;

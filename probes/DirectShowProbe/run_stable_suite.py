@@ -34,6 +34,15 @@ def validate_result(result: dict) -> list[str]:
     elif any(value is not True for value in checks.values()): errors.append('checks failed or not run')
     return errors
 
+def validate_switch(row: dict) -> list[str]:
+    errors=[]
+    if row.get('source')!=row.get('expected_source'):errors.append('source did not switch')
+    if abs(row.get('duration_ms',-9999)-row.get('expected_duration_ms',0))>100:errors.append('player duration did not switch')
+    health=row.get('health') or {}
+    if health.get('workers')!=4 or not 1<=health.get('slots',0)<=4 or not health.get('enabled') or any(health.get(k,1)!=0 for k in ['failures','rejected','lost']):
+        errors.append('collector inactive or unhealthy')
+    return errors
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--suite',required=True,choices=['smoke','accuracy','faults','soak','package','ui'])

@@ -9,6 +9,7 @@ GraphFact ready(uint64_t binding,std::string path,uint64_t at,GraphState state=G
 }
 int main(){try{
  GraphTimeline t;
+ check(t.apply(ready(1,"C:/not-ready.mp4",90,GraphState::Stopped)).empty(),"stopped connected renderer must not admit a movie");
  auto f=ready(1,"C:/a/movie.mp4",100);f.qualified=false;
  check(t.apply(f).empty(),"unqualified renderer admitted");f.qualified=true;f.state=GraphState::Unknown;
  check(t.apply(f).empty(),"unready media admitted");f.state=GraphState::Paused;

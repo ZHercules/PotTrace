@@ -1,5 +1,18 @@
 ﻿$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 Describe 'Windows PowerShell entry points' {
+    It 'verifies pinned DirectShow sources and rejects changed inputs' {
+        $verifier=Join-Path $repo 'scripts\verify-directshow.ps1'
+        (Test-Path -LiteralPath $verifier) | Should Be $true
+        $source=Join-Path $TestDrive 'baseclasses'
+        New-Item -ItemType Directory -Path $source -Force | Out-Null
+        Set-Content (Join-Path $source 'sample.h') 'known source'
+        Set-Content (Join-Path $source 'LICENSE') 'known license'
+        $manifest=Join-Path $TestDrive 'sources.json'
+        @{commit='434f6002bdf9cf9829406c3ff2b33387982d6168';licenseSha256=(Get-FileHash (Join-Path $source 'LICENSE')).Hash;files=@(@{name='sample.h';sha256=(Get-FileHash (Join-Path $source 'sample.h')).Hash})} | ConvertTo-Json -Depth 4 | Set-Content $manifest -Encoding UTF8
+        {& $verifier -SourceDirectory $source -ManifestPath $manifest} | Should Not Throw
+        Add-Content (Join-Path $source 'sample.h') 'changed'
+        {& $verifier -SourceDirectory $source -ManifestPath $manifest} | Should Throw
+    }
     It 'parses installer and publishing scripts without encoding errors' {
         foreach($relative in @('packaging\Install.ps1','packaging\Uninstall.ps1','scripts\publish.ps1')) {
             $tokens=$null;$parseErrors=$null

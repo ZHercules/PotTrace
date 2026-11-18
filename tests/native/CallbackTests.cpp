@@ -50,5 +50,14 @@ int main(){int failures=0;
   graphTransitions(s,{e},"2026-11-17T00:00:01.000Z",1000);auto j=s.outgoing.front().json;
   check(j.find("\"rate\":null")!=std::string::npos&&j.find("\"rateIsEstimated\":true")!=std::string::npos&&j.find("\"rateWindowStartMs\":200")!=std::string::npos,"unknown rate converted to 1 or window dropped");
  });
+ test("Graph disable preserves workers for later re-enable",[]{State s;s.graphMode=true;auto previous=state;state=&s;PotTrace_Shutdown();state=previous;
+  check(!s.stop,"script finalization killed graph workers permanently");});
+ test("Terminal close survives a full sample queue",[]{State s;s.graphMode=true;auto previous=state;state=&s;
+  GraphFact open;open.binding=1;open.qualified=true;open.at=open.begin=100;open.path="C:/movie.mp4";open.state=GraphState::Paused;
+  graphCallback(s,open,"2026-11-18T00:00:00.100Z");
+  GraphRaw queued;while(s.graphRaw.push(queued)){}
+  const auto result=PotTrace_RetireGraph(1,200);drainGraphRetirements(s);state=previous;
+  check(result==0,"terminal close was rejected by sample backpressure");
+  check(s.outgoing.back().json.find("MediaClosed")!=std::string::npos,"close not delivered");});
  return failures?1:0;
 }

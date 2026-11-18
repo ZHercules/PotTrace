@@ -40,4 +40,11 @@ class StableSuiteTests(unittest.TestCase):
     def test_good_evidence_is_accepted(self):
         self.assertEqual(self.suite.validate_result(self.valid()), [])
 
+    def test_switch_request_without_observed_new_source_cannot_pass(self):
+        row=dict(expected_source='b.mp4',source='a.mp4',duration_ms=61000,expected_duration_ms=61000,
+                 health=dict(workers=4,slots=2,failures=0,rejected=0,lost=0,enabled=True))
+        self.assertIn('source did not switch',self.suite.validate_switch(row))
+        row['source']='b.mp4';row['health']['slots']=0
+        self.assertIn('collector inactive or unhealthy',self.suite.validate_switch(row))
+
 if __name__ == '__main__': unittest.main()

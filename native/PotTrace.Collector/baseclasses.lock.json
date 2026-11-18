@@ -1,0 +1,288 @@
+{
+  "commit": "434f6002bdf9cf9829406c3ff2b33387982d6168",
+  "repository": "https://github.com/microsoft/Windows-classic-samples",
+  "path": "Samples/Win7Samples/multimedia/directshow/baseclasses",
+  "files": [
+    {
+      "name": "amextra.cpp",
+      "sha256": "d71c6336278b465c478dd24707d3a8f36bac63d5191073224d67aebb83cb30bd"
+    },
+    {
+      "name": "amextra.h",
+      "sha256": "82c7c638c2cfc9a272af79945c20f0b2e385aeaab7330905e2ac4fe10d5fadc6"
+    },
+    {
+      "name": "amfilter.cpp",
+      "sha256": "3f8713fcd4992938142f09eec39a2075290c5bd38b1191041736c1082b237236"
+    },
+    {
+      "name": "amfilter.h",
+      "sha256": "369bad3f8dc21a78de76989265d799937499c4478cd7021066324c69be9bf093"
+    },
+    {
+      "name": "amvideo.cpp",
+      "sha256": "220471d033f1cb7ca378e5a87c6ad3af89a09e64f0bba2e1ce69001dabd59c30"
+    },
+    {
+      "name": "arithutil.cpp",
+      "sha256": "e0a3e011a139a04b3029012d4a7496e15b882d2bc6fe85a50b7bacca22f10b46"
+    },
+    {
+      "name": "baseclasses.sln",
+      "sha256": "9d5a6976e3f09031719c3eada3bfac2f355cf33ae9a2ee135b40ee31329de6f0"
+    },
+    {
+      "name": "baseclasses.vcproj",
+      "sha256": "32dd0653465f0166d59c45eabcf73aafb579cfa7eee4cfa7f8a76ca03e2671a2"
+    },
+    {
+      "name": "cache.h",
+      "sha256": "257b9cb959d3a0e7b96b2c0280d7581da5c2fb36075c10c580e58dd59b63f197"
+    },
+    {
+      "name": "checkbmi.h",
+      "sha256": "1cc1e34c1100ef498170e99c1c20611cbc43e0d9e115f77943557e500babe2ce"
+    },
+    {
+      "name": "combase.cpp",
+      "sha256": "689434b48d9835c4f1372aeb015b2249c430a6d3562b8a789f991a3c0c23a542"
+    },
+    {
+      "name": "combase.h",
+      "sha256": "d2ecada237b63b2a9855b240c8a50b937fda9be5e93cff65c519953addc58f34"
+    },
+    {
+      "name": "cprop.cpp",
+      "sha256": "e065829eedc46c9a5687e8286b13d50388e2974f9642758d1d77c67e5b2c77d3"
+    },
+    {
+      "name": "cprop.h",
+      "sha256": "9accdda8c79459f78e5a2a65e8f3ebbbfa6a0e2f410399defecb2c9de6b0244c"
+    },
+    {
+      "name": "ctlutil.cpp",
+      "sha256": "8bb02b6f6940abbb29581992f5fe9c5fe7613eb5973fd6a39c2e8ff3da548b29"
+    },
+    {
+      "name": "ctlutil.h",
+      "sha256": "2f0188b624aeb02f839f54344252ab6a9cff521490335fdb1f63d3e5c15d125c"
+    },
+    {
+      "name": "ddmm.cpp",
+      "sha256": "fb8ed50a636b7e73ea9552f553f9ddb7b2386565b0037e0a637aaf1416a3ba1e"
+    },
+    {
+      "name": "ddmm.h",
+      "sha256": "2317ef120c1e7a6caabba6e83ad4dae437c1e6d9fff1acfff8b7b8129568b734"
+    },
+    {
+      "name": "dllentry.cpp",
+      "sha256": "5c0db787f35ddbcbb134a470f66afd69669074a475cd1d0b3769215b96cde394"
+    },
+    {
+      "name": "dllsetup.cpp",
+      "sha256": "e5a1c4e107e3971e2a12138f3cde7a617b90ac4bf44b94c894ee36205e0f2603"
+    },
+    {
+      "name": "dllsetup.h",
+      "sha256": "0ab1057a25fe434b797211f7f8ed938867336ad8f4254bf64920e5be4a923a44"
+    },
+    {
+      "name": "dxmperf.h",
+      "sha256": "f8be4e1f3f6d7b958de7148f9ba514e574a314c832291d2d129bd45ed7a16d6c"
+    },
+    {
+      "name": "fourcc.h",
+      "sha256": "be08801b00b2a24c6abc6e9752a624cbaccd926c4486208e1f773df1f948d315"
+    },
+    {
+      "name": "measure.h",
+      "sha256": "2d414139fd2e36996d30350d881a1fb5480bed5e79dd9138dea4132d76475b64"
+    },
+    {
+      "name": "msgthrd.h",
+      "sha256": "29d76c9ebc9bc8805d069a043dae375645561aaecd322e947dc43855c727530f"
+    },
+    {
+      "name": "mtype.cpp",
+      "sha256": "c6848a1b6a5f46125e3bb8b92f669e20bb78606959a3b57cd3263558ba875300"
+    },
+    {
+      "name": "mtype.h",
+      "sha256": "5aeb6f3605887be3073565c8e53ab9720d9e32e70556988ef2638f46361768ad"
+    },
+    {
+      "name": "outputq.cpp",
+      "sha256": "f437c775ca6dc3a18d3d19505d459f7b20ba5d309bca70cc0d73fff3f2f5102d"
+    },
+    {
+      "name": "outputq.h",
+      "sha256": "baf4c30b139ee0044e85361f7bd43fc8512f123bb5795a05d7892eb605536744"
+    },
+    {
+      "name": "perflog.cpp",
+      "sha256": "7ea214e0cbb5cb126b2f2ffd550613c99f1ed63129ac706d8172eef899caac19"
+    },
+    {
+      "name": "perflog.h",
+      "sha256": "8f70939ca64f3ce3db8240404e9cbb167e8254fb4726189114817a10887dcfc8"
+    },
+    {
+      "name": "perfstruct.h",
+      "sha256": "a966f92a93b8afe17cae00fdc30c2ad4cf2c0649adc2f583a0f7c4c2fd2cd02c"
+    },
+    {
+      "name": "pstream.cpp",
+      "sha256": "3becc46eebf814a9c49c62904b04f6b9243d445df23ce7d297d44bf5ea2fcb2b"
+    },
+    {
+      "name": "pstream.h",
+      "sha256": "75ee46de3180a7b6068de6c54176c2fc327a6454453269ea0973b20954aa6694"
+    },
+    {
+      "name": "pullpin.cpp",
+      "sha256": "8bc2b11d9f0b994c18b2f083fc060fac079cd8619959ef410ac14432ff3330d6"
+    },
+    {
+      "name": "pullpin.h",
+      "sha256": "9e4a74a0c67fde1bef93fc41d937ce09ebf430c10b82c27e9e8ecd47988f9876"
+    },
+    {
+      "name": "refclock.cpp",
+      "sha256": "00aa1c36f8aba52fd351498b509ff96e04bd86a87ca0e36099cfd335f29a7e97"
+    },
+    {
+      "name": "refclock.h",
+      "sha256": "3e3ba94407c51a1fe95255977301cb4e783817f2a5f6796c9db3125350c8c66e"
+    },
+    {
+      "name": "reftime.h",
+      "sha256": "dda8ce17126c1f7c6f9fa6ad64586b7f74922281b7879cf2dc3fe4b8fb5700b9"
+    },
+    {
+      "name": "renbase.cpp",
+      "sha256": "1a20710a4585c3151ad07c9aac873665758f233fb582d5fed85e4674addc452c"
+    },
+    {
+      "name": "renbase.h",
+      "sha256": "3dc24dd8818c707d1c76319f7b87117714c4f759a6869461c7a6b8c77d22d186"
+    },
+    {
+      "name": "schedule.cpp",
+      "sha256": "0b917f8232d7412491fcdf3f5642f6a96c9f83990c8377042cf5044367a88b75"
+    },
+    {
+      "name": "schedule.h",
+      "sha256": "3cfc854d97fba4070bdfd55d6646ae0bb0f1d3bc70739e1f575600e471ca4041"
+    },
+    {
+      "name": "seekpt.cpp",
+      "sha256": "a625e8c8efd01e5ab6242fe264a2fee9c8ec3c173ce0dc3b76ccba37636f93f6"
+    },
+    {
+      "name": "seekpt.h",
+      "sha256": "54f3035383f27d5e67ea0c28957328f05bf46f48c396132ad1f7645b6b1de49e"
+    },
+    {
+      "name": "source.cpp",
+      "sha256": "b3efab4f318ade58cfe59b9a0769e024845c6fc9091889e575d174d44f1cface"
+    },
+    {
+      "name": "source.h",
+      "sha256": "f8b2cb964f9e8625316be0fb564debe2f8ef3762853ea0b17bf83d83a2aaf958"
+    },
+    {
+      "name": "streams.h",
+      "sha256": "b79a6db79e68017abc7e774a3aa9bd6bfa43bbceec5050b35b54c1537ca1154d"
+    },
+    {
+      "name": "strmctl.cpp",
+      "sha256": "eac4e688ac4b969e7cf3cf06b4c49af24a3f9aefda65b8608d0e42803bd01c8e"
+    },
+    {
+      "name": "strmctl.h",
+      "sha256": "1d3de17a85434c5ddc15e2214882587ebb1adcada18ae50b811a32cfeadaae4c"
+    },
+    {
+      "name": "sysclock.cpp",
+      "sha256": "14381be5b26dc4adcdf1a927a6301bd310236245ae28a49dee55f7ca1d652ae2"
+    },
+    {
+      "name": "sysclock.h",
+      "sha256": "a4731c223e417b3eeeff121b05720c2cb55fd8a3f8292e3633f1e574f046b424"
+    },
+    {
+      "name": "transfrm.cpp",
+      "sha256": "00bf226b568cace04582d966390d21f8f437dd0ca818b65092f43a67f3de4b56"
+    },
+    {
+      "name": "transfrm.h",
+      "sha256": "6e21be4d51a4024c5ea6058d1b3366d5fcad0c8efb01a9fd81e9f9d7c3a14394"
+    },
+    {
+      "name": "transip.cpp",
+      "sha256": "887278cf45f240e3b8c7ec57d2d9de76037433750ba7ba39e88810809c82ab5d"
+    },
+    {
+      "name": "transip.h",
+      "sha256": "d238e3e2308870f828019d421efafab86be7dfea91fb051b10f9689f6393e3ba"
+    },
+    {
+      "name": "videoctl.cpp",
+      "sha256": "5759c0291e688134cd8e2ae3be3d9dbb51cb658dc82e0b88a030002aed239060"
+    },
+    {
+      "name": "videoctl.h",
+      "sha256": "5a19ae2ed9297002ca288a22ba27d84d1a1f250f467ccb1bca12fa5d855f1704"
+    },
+    {
+      "name": "vtrans.cpp",
+      "sha256": "cdd3e8b8e8779d5f0504d74d903565d4f0112846a0675b57dfd916024637e2cc"
+    },
+    {
+      "name": "vtrans.h",
+      "sha256": "00053fb4713e8449d4888bc3b08cb908503e73c66ab754e55ef2a9bc653bc1a5"
+    },
+    {
+      "name": "winctrl.cpp",
+      "sha256": "1d7b9d1291dd5357fc8a5f9ec6ac1989fd866f28eeecb4b88c6609f7c4a22f45"
+    },
+    {
+      "name": "winctrl.h",
+      "sha256": "876cc70c3f195f2c63883f20383f20a3cfc2777785d25e733c9dfcd337ac7314"
+    },
+    {
+      "name": "winutil.cpp",
+      "sha256": "b36070754e26413f6599ecfc380d85b12fb3f5f1c3f89c3ad24e54cc452d3080"
+    },
+    {
+      "name": "winutil.h",
+      "sha256": "86b441f420be585d5e003ce8023b9dbd931b8fb9b1de09fed4ceb2e88d5c9628"
+    },
+    {
+      "name": "wxdebug.cpp",
+      "sha256": "7bf88421411df03f281ddee638c7c1061cd496326b1823bd049db27c7bf4cc30"
+    },
+    {
+      "name": "wxdebug.h",
+      "sha256": "653808172c0c03e21c0dbf68182af34cc0216ff786fede91335117c30260ece0"
+    },
+    {
+      "name": "wxlist.cpp",
+      "sha256": "0ded49ca55a9e5fa6897fa9cbd288555e0af30c969e2f2ea5a2bf67dc8c2586c"
+    },
+    {
+      "name": "wxlist.h",
+      "sha256": "5d6305a25f44a238b6d358ba2c0c40f469fec08b250c087be2b4ae837f33e634"
+    },
+    {
+      "name": "wxutil.cpp",
+      "sha256": "f28e227a73b0b01055f7c453a2ddb981af0ebd5880387b0aa7afd48559980cb8"
+    },
+    {
+      "name": "wxutil.h",
+      "sha256": "06bcb8348fe9cb5f1f29e59f4a2b7208f42ee569273fa9e5e8f4b9785489b4fa"
+    }
+  ],
+  "licenseSha256": "3645a237b872306e4955bc2ce75783537bd7123bcb57332f8819e4cfbcf50b45"
+}

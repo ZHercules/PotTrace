@@ -1,4 +1,4 @@
-param([string]$Configuration='Release')
+﻿param([string]$Configuration='Release')
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 Push-Location $repo
@@ -12,4 +12,9 @@ try {
  if($LASTEXITCODE -ne 0){throw 'Native configure failed'}
  & $cmake --build out/native --config $Configuration
  if($LASTEXITCODE -ne 0){throw 'Native build failed'}
+ & "$PSScriptRoot\verify-directshow.ps1"
+ & $cmake -S native/PotTrace.Collector -B out/collector -G 'Visual Studio 18 2026' -A x64
+ if($LASTEXITCODE -ne 0){throw 'Collector configure failed'}
+ & $cmake --build out/collector --config $Configuration
+ if($LASTEXITCODE -ne 0){throw 'Collector build failed'}
 }finally{Pop-Location}

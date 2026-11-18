@@ -10,6 +10,12 @@
 
 **Spec:** [稳定版设计](../specs/2026-11-18-stable-release-design.md)。本计划是其待审阅实施拆分，所有验收复选框初始未完成。
 
+## 2026-11-18 执行进度
+
+首个增量在 `codex/stable-collector`：任务 1 验证器与基线已建立，独立计时见证校准未完成；任务 2 正式采集器、唯一授权文件和自动加载链路已实现并实播；任务 3 固定槽、退图终止与过期结果隔离已实现，100 次逐次断言换片通过，但真实第三方永久阻塞和长时资源门槛仍待验证。完整证据见 [开发验收](../../stable-validation.md)。任务 4–11 尚未实施，当前不能部署稳定版。
+
+实施调整：任务 2/3 共用启动与生命周期设施，合并为一次实现提交；配置/运行时小模块使用头文件实现，不为拆分数量新增 `.cpp`。共用观测逻辑保留诊断包装器，生产配置不依赖测试环境变量。配套 Bridge/宿主暂用现有预览通信与数据库；版本握手及稳定库严格隔离留在任务 4/6，不对混用版本作兼容承诺。
+
 ## Global Constraints
 
 - 停留严格 `>10000ms`；详细片段实播严格 `>5000ms`；暂停仅贡献已确认停留。
@@ -53,11 +59,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dotnet.ps1 test 
 
 **Interfaces:** Python `load_matrix(path: Path) -> dict`、`validate_result(result: dict) -> list[str]`；每轮 manifest 包含 build/player/config 哈希、输入、命令及独立见证窗口、证据目录、检查结果和失败原因。运行入口 `run_stable_suite.py --suite NAME --output DIR --player PATH`；缺失证据退出非零。
 
-- [ ] 写失败测试 `test_missing_witness_is_failure`、`test_player_fingerprint_mismatch_is_failure`、`test_failed_attempt_is_preserved`；断言缺见证/版本不符不能 PASS，重复运行生成新 evidence 目录。
-- [ ] 运行 `python -m unittest discover -s tests/probes -p test_stable_suite.py`，确认因新验证器尚未实现而失败。
-- [ ] 实现上述接口和 manifest；定义 suite 名 `smoke/accuracy/faults/soak/package/ui`，记录每项的预期和 G1–G6 对应关系；此时未实现的 suite 返回未完成，不伪造通过。
+- [x] 写失败测试 `test_missing_witness_is_failure`、`test_player_fingerprint_mismatch_is_failure`、`test_failed_attempt_is_preserved`；断言缺见证/版本不符不能 PASS，重复运行生成新 evidence 目录。
+- [x] 运行 `python -m unittest discover -s tests/probes -p test_stable_suite.py`，确认因新验证器尚未实现而失败。
+- [x] 实现上述接口和 manifest；定义 suite 名 `smoke/accuracy/faults/soak/package/ui`，记录每项的预期和 G1–G6 对应关系；此时未实现的 suite 返回未完成，不伪造通过。
 - [ ] 新测试通过；全新 Release 构建和现有全量测试通过，记录实际数量和基线资源；校准画面见证间隔及时间戳误差。
-- [ ] 单独提交基线工具与验收模板：`test: establish stable release evidence baseline`。
+- [x] 单独提交基线工具与验收模板：`test: establish stable release evidence baseline`。
 
 ## Task 2：提取正式采集器与自动启动链路
 
@@ -65,11 +71,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dotnet.ps1 test 
 
 **Interfaces:** `CollectorConfig LoadCollectorConfig(const std::filesystem::path& modulePath)`，返回受控 Bridge 路径及安装标识；`bool EnsureBridgeStarted(const CollectorConfig&) noexcept` 幂等初始化。`CapturePolicy(bool Enabled, bool RecordingPaused, long Revision)` 与 `Task SaveAsync(CapturePolicy policy, CancellationToken ct)` 在 CapturePolicyStore 定义；唯一权威文件为 `capture-policy.json`。配置无效时过滤器透明透传，停止统计，不能阻止播放。
 
-- [ ] 写 `ActivationWithoutScript`、`RepeatedActivationIsIdempotent`、`RejectRelativeBridgePath`、`SourceReusedGraphNeedsNewEpoch`；断言在已授权策略下，未发生脚本影片回调也建立观察缓冲，重复初始化只有一个 Bridge 实例，相对路径拒绝，图复用不继承旧身份。补 `MissingPolicyDoesNotCapture`、`UncheckedPluginDisablesCapture`、`UserExitPreventsAxRestart`，验证未知授权不缓存影片身份、取消勾选与主动退出立即抑制本实例。
-- [ ] 将新 CTest 目标登记后运行 build/test，确认缺失正式实现导致新测试失败。
-- [ ] 从原型提取共用观察逻辑，生产 AX 使用独立 CLSID，加载自己的受控配置；统一策略开关并验证插件勾选状态的早期读取/取消通知。固定 baseclasses 下载版本/哈希并核对分发许可。ABI v2 暂不改布局。
-- [ ] 原生测试通过；隔离 `smoke` 验证 AX 实际载入、无需测试环境变量、首次启用后的第二次启动自动采样；产生并保存一条在线入库会话。
-- [ ] 提交 `feat: introduce production DirectShow collector`。
+- [x] 写 `ActivationWithoutScript`、`RepeatedActivationIsIdempotent`、`RejectRelativeBridgePath`、`SourceReusedGraphNeedsNewEpoch`；断言在已授权策略下，未发生脚本影片回调也建立观察缓冲，重复初始化只有一个 Bridge 实例，相对路径拒绝，图复用不继承旧身份。补 `MissingPolicyDoesNotCapture`、`UncheckedPluginDisablesCapture`、`UserExitPreventsAxRestart`，验证未知授权不缓存影片身份、取消勾选与主动退出立即抑制本实例。
+- [x] 将新 CTest 目标登记后运行 build/test，确认缺失正式实现导致新测试失败。
+- [x] 从原型提取共用观察逻辑，生产 AX 使用独立 CLSID，加载自己的受控配置；统一策略开关并验证插件勾选状态的早期读取/取消通知。固定 baseclasses 下载版本/哈希并核对分发许可。ABI v2 暂不改布局。
+- [x] 原生测试通过；隔离 `smoke` 验证 AX 实际载入、无需测试环境变量、首次启用后的第二次启动自动采样；产生并保存一条在线入库会话。
+- [x] 提交正式采集器（与任务 3 共用设施合并提交：`feat: add controlled production collector with bounded lifecycle`）。
 
 ## Task 3：固定生命周期与有界故障退化
 
@@ -77,11 +83,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dotnet.ps1 test 
 
 **Interfaces:** `GraphLease CollectorRuntime::Attach(GraphBinding binding)`、`void CollectorRuntime::Retire(GraphLease lease) noexcept`、`CollectorHealth CollectorRuntime::Snapshot() const noexcept`。`GraphLease` 为绑定 ID + generation；`CollectorHealth` 含在途查询数、占用槽数、待回收引用数、队列丢失数、故障原因；类型在 `CollectorRuntime.h` 定义。
 
-- [ ] 写 `RetiredGenerationCannotPublish`、`BlockedQueryDoesNotBlockRetire`、`ExhaustedSlotsDoNotSpawnWorkers`、`TerminalDropBecomesGap`；断言流线程无磁盘/等待调用、线程 ≤5、受观察图 ≤2、过期包零提交、满队列不静默丢最终边界。
-- [ ] 使用可控阻塞假 COM 对象跑新 CTest，确认现有无限/逐图线程实现不能满足新约束。
-- [ ] 实现固定查询槽及无等待 retire；长期阻塞保留有界引用，不强杀、不卸载仍被调用模块；诊断文件默认不记路径且总量 ≤10MiB。
+- [x] 写 `RetiredGenerationCannotPublish`、`BlockedQueryDoesNotBlockRetire`、`ExhaustedSlotsDoNotSpawnWorkers`、`TerminalDropBecomesGap`；断言流线程无磁盘/等待调用、线程 ≤5、受观察图 ≤2、过期包零提交、满队列不静默丢最终边界。
+- [x] 使用可控阻塞假 COM 对象跑新 CTest，确认现有无限/逐图线程实现不能满足新约束。
+- [x] 实现固定查询槽及无等待 retire；长期阻塞保留有界引用，不强杀、不卸载仍被调用模块；诊断文件默认不记路径且总量 ≤10MiB。
 - [ ] 测试释放阻塞后引用可回收；隔离执行 100 次换片、退图时挂住查询、关闭播放器，确认无阻塞退出和资源线性增长。
-- [ ] 提交 `fix: bound collector lifetime and stalled observations`。
+- [x] 提交有界生命周期实现（与任务 2 合并提交，实播故障及长稳验收仍按上一项保留未完成）。
 
 ## Task 4：明确版本握手和采集状态
 
