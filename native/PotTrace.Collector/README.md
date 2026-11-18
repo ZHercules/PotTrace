@@ -52,4 +52,4 @@ python probes/DirectShowProbe/run_collector_probe.py --first-enable --auto-next 
 
 当前 Bridge/宿主仍为配套构建的预览通信协议和数据库。版本握手、稳定库迁移、正式安装回退、用户界面质量状态与大历史性能尚未实现，详见 [验收报告](../../docs/stable-validation.md)。
 
-启动阶段现在单独保存 `startup-<尝试编号>-<PID>.json`，在清理前记录退出码、窗口与模块快照；启动失败不会自动重试成成功。早期一次退出仍未定因，参见 [专项调查](../../docs/startup-exit-investigation.md)。
+启动阶段现在单独保存 `startup-<尝试编号>-<PID>.json`，在清理前记录退出码、窗口与模块快照；启动失败不会自动重试成成功。原始一次退出已按用户决定忽略并归档，不再作为验收阻塞项，参见 [专项调查](../../docs/startup-exit-investigation.md)。
