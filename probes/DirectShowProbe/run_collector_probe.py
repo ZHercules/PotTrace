@@ -7,6 +7,7 @@ from window_probe import windows,u,CB,info
 site.addsitedir(r'D:\codex\PotTrace\.tools\python')
 import imageio_ffmpeg, psutil
 from run_stable_suite import validate_switch
+from player_startup import wait_for_player_window
 
 clock=ctypes.windll.kernel32.GetTickCount64;clock.restype=ctypes.c_ulonglong
 u.SendMessageTimeoutW.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_size_t,ctypes.c_ssize_t,ctypes.c_uint,ctypes.c_uint,ctypes.POINTER(ctypes.c_size_t)]
@@ -64,13 +65,20 @@ def main():
         health=base/'collector-health.json'
         report['phases'].append(dict(name=name,at=clock(),sessions=record(db),health=json.loads(health.read_text()) if health.exists() else None))
     def wait_window(p):
-        end=time.monotonic()+20
-        while time.monotonic()<end:
-            found=next((w['hwnd'] for w in windows(p.pid) if w['cls']=='PotPlayer64'),None)
-            if found:return found
-            if p.poll() is not None:raise RuntimeError(f'Player exited before window: code={p.returncode}')
-            time.sleep(.03)
-        raise TimeoutError('No player window')
+        evidence={};report.setdefault('startups',[]).append(evidence)
+        evidence['attempt']=len(report['startups'])
+        target=base/('startup-'+str(evidence['attempt'])+'-'+str(p.pid)+'.json')
+        def checkpoint(row):
+            temporary=target.with_suffix('.tmp');temporary.write_text(json.dumps(row,ensure_ascii=False,indent=2),encoding='utf-8');temporary.replace(target)
+        def inspect():
+            row={'windows':[{k:w[k] for k in ['hwnd','pid','cls','title']} for w in windows(p.pid)]}
+            try:
+                process=psutil.Process(p.pid)
+                row['modules']=sorted({Path(m.path).name for m in process.memory_maps() if Path(m.path).name.lower().startswith(('potplayer','pottrace','webview2','evr.'))})
+                row['children']=[{'pid':child.pid,'name':child.name()} for child in process.children()][:32]
+            except psutil.Error as error:row['inspection_error']={'type':type(error).__name__,'message':str(error)}
+            return row
+        return wait_for_player_window(p,inspect,evidence,checkpoint,now=clock)
     def wait_play(h):
         end=time.monotonic()+15
         while time.monotonic()<end:

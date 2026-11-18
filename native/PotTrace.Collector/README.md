@@ -51,3 +51,5 @@ python probes/DirectShowProbe/run_collector_probe.py --first-enable --auto-next 
 本机工具需 Python 3.12，以及 `.tools/python` 中的 psutil、pywinauto、imageio-ffmpeg；先准备已配置播放统计扩展的独立播放器副本。每轮生成媒体、数据库、配置及结果，失败不覆盖。`--baseline` 为无 AX 资源对照。通过这些检查不代表 100ms 精度、预加载所有配置、第三方永久阻塞、睡眠或 24 小时稳定门槛通过，结果始终包含 `deployment_eligible=false`。
 
 当前 Bridge/宿主仍为配套构建的预览通信协议和数据库。版本握手、稳定库迁移、正式安装回退、用户界面质量状态与大历史性能尚未实现，详见 [验收报告](../../docs/stable-validation.md)。
+
+启动阶段现在单独保存 `startup-<尝试编号>-<PID>.json`，在清理前记录退出码、窗口与模块快照；启动失败不会自动重试成成功。早期一次退出仍未定因，参见 [专项调查](../../docs/startup-exit-investigation.md)。
