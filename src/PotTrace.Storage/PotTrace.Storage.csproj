@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><ProjectReference Include="../PotTrace.Core/PotTrace.Core.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" /><EmbeddedResource Include="Migrations/*.sql" /></ItemGroup></Project>

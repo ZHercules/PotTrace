@@ -1,0 +1,274 @@
+{
+  "date": "2026-11-17",
+  "decision": "not deployable",
+  "paused_load": [
+    {
+      "evidence": "paused-load-1794854706305687400",
+      "version": "26.4.22",
+      "variant": "baseline",
+      "startup": {
+        "first_active": {
+          "at": 49004656,
+          "state": 2,
+          "position": 1,
+          "duration": 30000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 2777,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "switch": {
+        "first_active": {
+          "at": 49008562,
+          "state": 2,
+          "position": 0,
+          "duration": 31000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1818,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "auto_next": {
+        "first_active": {
+          "at": 49015734,
+          "state": 2,
+          "position": 0,
+          "duration": 18000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1633,
+        "loaded": true,
+        "all_observed_active_paused": false
+      }
+    },
+    {
+      "evidence": "paused-load-1794854790034373600",
+      "version": "26.4.22",
+      "variant": "prearmed",
+      "startup": {
+        "first_active": {
+          "at": 49088609,
+          "state": 2,
+          "position": 0,
+          "duration": 30000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 3024,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "switch": {
+        "first_active": {
+          "at": 49092687,
+          "state": 2,
+          "position": 0,
+          "duration": 31000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 2001,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "auto_next": {
+        "first_active": {
+          "at": 49099921,
+          "state": 2,
+          "position": 0,
+          "duration": 18000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1754,
+        "loaded": true,
+        "all_observed_active_paused": false
+      }
+    },
+    {
+      "evidence": "paused-load-1794854790034373600",
+      "version": "26.4.22",
+      "variant": "minimized",
+      "startup": {
+        "first_active": {
+          "at": 49104203,
+          "state": 2,
+          "position": 0,
+          "duration": 30000,
+          "minimized": true
+        },
+        "observed_playing": true,
+        "max_position": 252,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "switch": {
+        "first_active": {
+          "at": 49107984,
+          "state": 2,
+          "position": 0,
+          "duration": 31000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1819,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "auto_next": {
+        "first_active": {
+          "at": 49115156,
+          "state": 2,
+          "position": 0,
+          "duration": 18000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1641,
+        "loaded": true,
+        "all_observed_active_paused": false
+      }
+    },
+    {
+      "evidence": "paused-load-1794854821245913100",
+      "version": "26.10.21",
+      "variant": "baseline",
+      "startup": {
+        "first_active": {
+          "at": 49119953,
+          "state": 2,
+          "position": 0,
+          "duration": 30000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 2355,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "switch": {
+        "first_active": {
+          "at": 49123218,
+          "state": 2,
+          "position": 0,
+          "duration": 31000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 2094,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "auto_next": {
+        "first_active": {
+          "at": 49130562,
+          "state": 2,
+          "position": 0,
+          "duration": 18000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1770,
+        "loaded": true,
+        "all_observed_active_paused": false
+      }
+    },
+    {
+      "evidence": "paused-load-1794854821245913100",
+      "version": "26.10.21",
+      "variant": "minimized",
+      "startup": {
+        "first_active": {
+          "at": 49134484,
+          "state": 2,
+          "position": 0,
+          "duration": 30000,
+          "minimized": true
+        },
+        "observed_playing": true,
+        "max_position": 253,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "switch": {
+        "first_active": {
+          "at": 49138171,
+          "state": 2,
+          "position": 0,
+          "duration": 31000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 2045,
+        "loaded": true,
+        "all_observed_active_paused": false
+      },
+      "auto_next": {
+        "first_active": {
+          "at": 49145437,
+          "state": 2,
+          "position": 0,
+          "duration": 18000,
+          "minimized": false
+        },
+        "observed_playing": true,
+        "max_position": 1781,
+        "loaded": true,
+        "all_observed_active_paused": false
+      }
+    }
+  ],
+  "injected_identity_delays": [
+    {
+      "evidence": "startup-matrix-1794854885122770600",
+      "run": 0,
+      "visible": true,
+      "start": 49181921,
+      "ready": 1547,
+      "paused": 1579,
+      "checked": 12579,
+      "valid": 0,
+      "stay": [
+        9125
+      ],
+      "played": [
+        0
+      ],
+      "injected_open_delay_ms": 2000,
+      "paused_wait_ms": 11000,
+      "minimum_unrecorded_pause_ms": 1875,
+      "resume_requested": 12579,
+      "resumed_state": 2,
+      "resume_played_ms": 2750,
+      "resume_media_ms": 2998
+    },
+    {
+      "evidence": "startup-matrix-1794854906115800300",
+      "run": 0,
+      "visible": true,
+      "start": 49202921,
+      "ready": 1547,
+      "paused": 1563,
+      "checked": 12563,
+      "valid": 0,
+      "stay": [
+        3047
+      ],
+      "played": [
+        0
+      ],
+      "injected_open_delay_ms": 8000,
+      "paused_wait_ms": 11000,
+      "minimum_unrecorded_pause_ms": 7953,
+      "resume_requested": 12579,
+      "resumed_state": 2,
+      "resume_played_ms": 2781,
+      "resume_media_ms": 2993
+    }
+  ]
+}

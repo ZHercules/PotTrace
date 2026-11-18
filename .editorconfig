@@ -1,0 +1,5 @@
+root = true
+
+# Windows PowerShell 5.1 interprets BOM-less scripts using the system code page.
+[*.ps1]
+charset = utf-8-bom
