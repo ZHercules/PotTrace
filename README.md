@@ -4,7 +4,7 @@ PotTrace 是为 **64 位 PotPlayer** 开发的本地播放统计扩展。精简�
 
 **v0.1.0 开发版 · Windows 11 x64**。在发布页的 **Assets** 中下载 `v0.1.0-win11-x64-potplayer-dev.zip`。ZIP 内含统计程序、DirectShow 采集器和 .NET 运行时，使用者只需备好匹配的 PotPlayer。[下载 v0.1.0](https://github.com/ZHercules/PotTrace/releases/tag/v0.1.0)
 
-发行 ZIP 的 SHA-256 随附件列在发布说明中，可用 PowerShell 的 `Get-FileHash` 核对。
+脱敏版 ZIP 的 SHA-256 为 `5921f1eb0f8569b6e7e8e6bb89ffdca9d0b0075b3943001f49e7a6600dfdb4cb`。可用 PowerShell 的 `Get-FileHash` 与发布说明中的校验值核对。
 
 [兼容性](#兼容性) · [快速开始](#快速开始) · [统计规则](#统计规则) · [数据管理](#数据管理) · [常见问题](#常见问题) · [开发与验证](#开发与验证)
 
