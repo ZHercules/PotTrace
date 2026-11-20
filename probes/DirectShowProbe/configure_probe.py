@@ -3,8 +3,9 @@ import os,sys,site,time,json,subprocess,argparse
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'probes/PotPlayerProbe'))
+from probe_tools import TOOLS
 from window_probe import windows,u
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+site.addsitedir(str(TOOLS / 'python'))
 from pywinauto import Desktop
 import win32gui,win32con
 parser=argparse.ArgumentParser();parser.add_argument('--template',action='store_true');parser.add_argument('--preload',action='store_true');parser.add_argument('--preview',action='store_true');args=parser.parse_args()

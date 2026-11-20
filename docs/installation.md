@@ -16,7 +16,8 @@
 2. 在发行目录执行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Install.ps1 -PotPlayerPath 'E:\pot\PotPlayer'
+$playerDir = Split-Path (Read-Host '请输入 PotPlayerMini64.exe 的完整路径')
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install.ps1 -PotPlayerPath $playerDir
 ```
 
 3. 打开 PotPlayer，在 **选项（F5）→ 扩展功能 → 播放统计** 中勾选 **PotTrace**。这是首次启用的一次性步骤。
@@ -56,7 +57,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install.ps1 -PotPlayerPath
 退出目标播放器及 PotTrace，然后执行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Uninstall.ps1 -PotPlayerPath 'E:\pot\PotPlayer'
+$playerDir = Split-Path (Read-Host '请输入 PotPlayerMini64.exe 的完整路径')
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Uninstall.ps1 -PotPlayerPath $playerDir
 ```
 
 默认保留历史与设置。只有明确添加 `-RemoveHistory` 才删除登记数据目录中的已知统计文件。卸载不递归删除播放器目录或用户数据目录。

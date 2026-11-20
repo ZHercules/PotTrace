@@ -21,6 +21,8 @@ try{
  @{CaptureBackend="DirectShow";Version=$Version;Files=@($files)} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'manifest.json') -Encoding UTF8
  # Debug symbols remain local build artifacts, outside the packaged manifest.
  Get-ChildItem (Join-Path $package 'app') -Filter '*.pdb' -File | ForEach-Object {Remove-Item -LiteralPath $_.FullName}
+ & python "$PSScriptRoot\check-package-paths.py" $package
+ if($LASTEXITCODE -ne 0){throw 'Release path check failed'}
  Compress-Archive -LiteralPath $package -DestinationPath ($package+'.zip')
  Write-Output "Package: $package.zip"
 }finally{Pop-Location}

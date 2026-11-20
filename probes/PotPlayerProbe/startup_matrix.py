@@ -1,6 +1,7 @@
 """Repeated real-host startup boundary checks, with optional non-semantic trace stamps."""
 import os,sys,time,json,sqlite3,subprocess,ctypes,argparse
 from pathlib import Path
+from probe_tools import TOOLS
 from window_probe import windows,u
 ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser();parser.add_argument('--runs',type=int,default=6);parser.add_argument('--stamp',action='store_true');parser.add_argument('--dwell',type=float,default=11)
@@ -36,7 +37,7 @@ try:
     for run in range(args.runs):
         data=base/str(run);data.mkdir();(data/'settings.json').write_text('{"Mode":1}',encoding='utf-8')
         ini.write_text('[PotTrace]\nHostPath='+str(ROOT/'src/PotTrace.App/bin/Debug/net10.0-windows/PotTrace.exe')+'\nDataDirectory='+str(data)+'\nChannel=startupmatrix\n',encoding='utf-16')
-        env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet',POTTRACE_TEST_EVENT_TRACE=str(data/'events.jsonl'),POTTRACE_TEST_RAW_TRACE=str(data/'raw.tsv'))
+        env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=str(TOOLS / 'dotnet'),POTTRACE_TEST_EVENT_TRACE=str(data/'events.jsonl'),POTTRACE_TEST_RAW_TRACE=str(data/'raw.tsv'))
         env['POTTRACE_TEST_WORKERS']=args.workers
         si=subprocess.STARTUPINFO();si.dwFlags|=subprocess.STARTF_USESHOWWINDOW;si.wShowWindow=5 if run%2==0 else 0
         start=clock();p=subprocess.Popen([str(EXE),str(ROOT/'out/fixtures/观看区间.avi'),'/new','/seek=0'],env=env,startupinfo=si);h=None

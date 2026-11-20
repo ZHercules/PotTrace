@@ -1,7 +1,8 @@
 """Capture the standalone WPF window using an explicitly generated sample database."""
 import site,os,subprocess,time,sys,ctypes,json
 from pathlib import Path
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+from probe_tools import TOOLS
+site.addsitedir(str(TOOLS / 'python'))
 from pywinauto import Application
 from window_probe import windows
 import win32gui
@@ -13,7 +14,7 @@ def capture(win,path):
     finally:win32gui.SetWindowPos(hwnd,-2,0,0,0,0,0x13)
 ROOT=Path(__file__).resolve().parents[2]
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=1
-env=dict(os.environ,DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet')
+env=dict(os.environ,DOTNET_ROOT=str(TOOLS / 'dotnet'))
 theme='Light' if '--light' in sys.argv else 'Dark'
 settings=ROOT/'out/ui-data/settings.json';before=settings.read_bytes() if settings.exists() else None
 settings.write_text(json.dumps({'Theme':theme}),encoding='utf-8')

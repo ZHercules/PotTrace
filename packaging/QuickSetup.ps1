@@ -9,8 +9,10 @@ if(-not $PotPlayerPath){
  try{
   $picker.Title='选择目标 PotPlayer 的 PotPlayerMini64.exe'
   $picker.Filter='64 位 PotPlayer|PotPlayerMini64.exe'
-  foreach($folder in @('E:\pot\PotPlayer',(Join-Path $env:ProgramFiles 'DAUM\PotPlayer'),(Join-Path $env:ProgramFiles 'PotPlayer'))){
-   if(Test-Path -LiteralPath (Join-Path $folder 'PotPlayerMini64.exe')){$picker.InitialDirectory=$folder;break}
+  $registered=(Get-ItemProperty -LiteralPath 'HKCU:\Software\DAUM\PotPlayer64' -Name ProgramPath -ErrorAction SilentlyContinue).ProgramPath
+  $registeredFolder=if($registered -and [IO.Path]::IsPathRooted($registered)){Split-Path -Parent $registered}
+  foreach($folder in @($registeredFolder,(Join-Path $env:ProgramFiles 'DAUM\PotPlayer'),(Join-Path $env:ProgramFiles 'PotPlayer'))){
+   if($folder -and (Test-Path -LiteralPath (Join-Path $folder 'PotPlayerMini64.exe'))){$picker.InitialDirectory=$folder;break}
   }
   if($picker.ShowDialog() -ne 'OK'){return}
   $PotPlayerPath=Split-Path -Parent $picker.FileName

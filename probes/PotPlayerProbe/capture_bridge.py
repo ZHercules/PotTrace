@@ -1,7 +1,8 @@
 """Diagnostic pipe receiver; fixture events only, never a production listener."""
 import site,sys,struct,json,time,subprocess,os,ctypes
 from pathlib import Path
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+from probe_tools import TOOLS
+site.addsitedir(str(TOOLS / 'python'))
 import win32pipe,win32file,win32api,win32security,win32process
 from window_probe import windows,u
 ROOT=Path(__file__).resolve().parents[2]
@@ -10,7 +11,7 @@ session_id=ctypes.c_ulong();ctypes.windll.kernel32.ProcessIdToSessionId(os.getpi
 name=rf'\\.\pipe\PotTrace.{sid}.{session}.integration'
 h=win32pipe.CreateNamedPipe(name,3,0,1,65536,65536,0,None)
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=5 if '--visible' in sys.argv else 0
-env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet')
+env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=str(TOOLS / 'dotnet'))
 p=subprocess.Popen([str(ROOT/'out/player/PotPlayerMini64.exe'),str(ROOT/'out/fixtures/测试 影片.avi'),'/new','/seek=0'],env=env,startupinfo=startup)
 def receive():
     n=struct.unpack('<I',win32file.ReadFile(h,4)[1])[0]

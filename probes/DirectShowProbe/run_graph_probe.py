@@ -3,6 +3,7 @@ import os,sys,json,time,ctypes,subprocess,argparse,site,hashlib,threading,sqlite
 from pathlib import Path
 ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
 ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'probes/PotPlayerProbe'))
+from probe_tools import TOOLS
 from window_probe import windows,u,CB,info
 from make_fixture import make
 parser=argparse.ArgumentParser()
@@ -39,7 +40,7 @@ A=base/f'source-a/same-name.{args.format}';B=base/f'source-b/same-name.{args.for
 for path,seconds,color in ((A,30,'red'),(B,31,'blue'),(C,12 if args.held_preload else 4,'red'),(D,18,'blue')):
  if args.format=='avi':make(path,seconds)
  else:
-  site.addsitedir(r'D:\codex\PotTrace\.tools\python');import imageio_ffmpeg
+  site.addsitedir(str(TOOLS / 'python'));import imageio_ffmpeg
   path.parent.mkdir(parents=True,exist_ok=True)
   subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-hide_banner','-loglevel','error','-f','lavfi','-i',f'color=c={color}:size=320x180:rate={args.frame_rate}','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t',str(seconds),'-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-y',str(path)],check=True,timeout=60)
 clock=ctypes.windll.kernel32.GetTickCount64;clock.restype=ctypes.c_ulonglong
@@ -92,7 +93,7 @@ def witness(h,p,label):
  # Capture only the owned player client. Presence of a file handle is evidence
  # of an open file, not proof of decoding; Windows open_files may omit handles.
  from ctypes import wintypes as wt
- site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+ site.addsitedir(str(TOOLS / 'python'))
  import psutil
  from PIL import ImageGrab,ImageStat
  row={'started':clock(),'state':snapshot(h)}
@@ -132,7 +133,7 @@ try:
   report['bridge_config']=args.bridge_config
   bridge.write_text('[PotTrace]\nSourceMode=DirectShow\nHostPath='+str(app)+'\nDataDirectory='+str(data)+'\nChannel=graph'+str(time.time_ns())+'\n',encoding='utf-16')
   env.pop('POTTRACE_TEST_WORKERS',None);env.pop('POTTRACE_DSHOW_STATE_ONLY',None)
-  env.update(DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet',POTTRACE_GRAPH_BRIDGE=str(bridge_dll),POTTRACE_DSHOW_RENDERER_WATCH='1')
+  env.update(DOTNET_ROOT=str(TOOLS / 'dotnet'),POTTRACE_GRAPH_BRIDGE=str(bridge_dll),POTTRACE_DSHOW_RENDERER_WATCH='1')
   report['ingest']=True;report['state_only']=False;report['renderer_watch']=True
  si=subprocess.STARTUPINFO();si.dwFlags|=subprocess.STARTF_USESHOWWINDOW;si.wShowWindow=5
  report['start']=clock();p=subprocess.Popen([str(EXE),str(A),'/new','/seek=0'],env=env,startupinfo=si)
@@ -154,7 +155,7 @@ try:
  if not report['first_active']:raise AssertionError('First source never became active')
  report['pause_requested']=clock();send(h,0x400,0x5007,1);report['pause_samples']=observe(h,1.2)
  if args.suspend_probe:
-  site.addsitedir(r'D:\codex\PotTrace\.tools\python');import psutil
+  site.addsitedir(str(TOOLS / 'python'));import psutil
   def active_record():
    with sqlite3.connect(base/'data/pottrace.db') as db:return json.loads(db.execute('SELECT Payload FROM Session').fetchone()[0])
   before_suspend=active_record();owned_process=psutil.Process(p.pid)
@@ -214,7 +215,7 @@ try:
    report['online_initial_sessions']=[json.loads(row[0]) for row in db.execute('SELECT Payload FROM Session')]
   if len(report['online_initial_sessions'])!=1:raise AssertionError('Graph did not create exactly one online session')
  if args.restart_host:
-  site.addsitedir(r'D:\codex\PotTrace\.tools\python');import psutil
+  site.addsitedir(str(TOOLS / 'python'));import psutil
   def owned_hosts():
    result=[]
    for process in psutil.process_iter(['name']):
@@ -301,7 +302,7 @@ try:
   send(h,0x111,10246)
  if args.preview:
   from ctypes import wintypes as wt
-  site.addsitedir(r'D:\codex\PotTrace\.tools\python');import win32gui,win32con
+  site.addsitedir(str(TOOLS / 'python'));import win32gui,win32con
   from PIL import ImageGrab
   win32gui.SetWindowPos(h,win32con.HWND_TOPMOST,0,0,0,0,win32con.SWP_NOMOVE|win32con.SWP_NOSIZE|win32con.SWP_NOACTIVATE)
   rect=win32gui.GetClientRect(h);origin=win32gui.ClientToScreen(h,(0,0));report['preview_client_rect']=rect

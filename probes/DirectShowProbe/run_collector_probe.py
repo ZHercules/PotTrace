@@ -3,8 +3,9 @@ import argparse, ctypes, hashlib, json, os, site, sqlite3, subprocess, sys, time
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'probes/PotPlayerProbe'))
+from probe_tools import TOOLS
 from window_probe import windows,u,CB,info
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+site.addsitedir(str(TOOLS / 'python'))
 import imageio_ffmpeg, psutil
 from run_stable_suite import validate_switch
 from player_startup import wait_for_player_window
@@ -58,7 +59,7 @@ def main():
     config=base/'pottrace-collector.ini'
     config.write_text('[PotTrace]\nDiagnostics=1\nBridgePath='+str(bridge)+'\nPolicyPath='+str(policy)+'\nPlayerIni='+str(ini)+'\n',encoding='utf-16')
     env={k:v for k,v in os.environ.items() if not k.startswith('POTTRACE_')}
-    env.update(DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet',WEBVIEW2_USER_DATA_FOLDER=str(base/'webview'))
+    env.update(DOTNET_ROOT=str(TOOLS / 'dotnet'),WEBVIEW2_USER_DATA_FOLDER=str(base/'webview'))
     report=dict(command=sys.argv,host_sha256=digest(host),player=str(exe),player_sha256=digest(exe),collector_sha256=digest(ax),channel=channel,baseline=args.baseline,deployment_eligible=False,phases=[],checks={},resources=[])
     player=None;db=data/'pottrace.db'
     def phase(name):
