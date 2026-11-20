@@ -5,6 +5,7 @@ site.addsitedir(r'D:\codex\PotTrace\.tools\python')
 from pywinauto import Application
 from window_probe import windows
 import win32gui
+import win32api
 def capture(win,path):
     hwnd=win.handle
     try:
@@ -39,7 +40,29 @@ try:
     win.child_window(title='详细',control_type='RadioButton').select();time.sleep(1)
     win.child_window(title='观看会话',control_type='Text').wait('visible',timeout=5)
     capture(win,dest/('detailed-'+theme.lower()+'.png'))
-    print('Captured simple and detailed windows')
+    heading=win.child_window(title='片段热度',control_type='Text').rectangle()
+    legend=win.child_window(title='覆盖次数 · 每秒采样',control_type='Text').rectangle()
+    scale=ctypes.windll.user32.GetDpiForWindow(handle)/96
+    previous=win32api.GetCursorPos()
+    try:
+        win32api.SetCursorPos(((heading.left+legend.right)//2,heading.bottom+round(36*scale)))
+        time.sleep(.3)
+        bounds=win.rectangle()
+        chart=win.capture_as_image().crop((heading.left-bounds.left,heading.top-bounds.top,
+            legend.right-bounds.left,heading.bottom-bounds.top+round(108*scale)))
+        chart.save(dest/('heat-hover-'+theme.lower()+'.png'))
+    finally:win32api.SetCursorPos(previous)
+    win.child_window(title='设置',control_type='MenuItem').invoke()
+    deadline=time.monotonic()+8
+    while time.monotonic()<deadline:
+        dialog_handle=next((w['hwnd'] for w in windows(p.pid) if w['title']=='PotTrace · 设置'),None)
+        if dialog_handle:break
+        time.sleep(.1)
+    assert dialog_handle,windows(p.pid)
+    dialog=app.window(handle=dialog_handle)
+    dialog.wait('visible',timeout=5)
+    capture(dialog,dest/('settings-'+theme.lower()+'.png'))
+    print('Captured simple, detailed and settings windows')
 finally:
     # This script owns this explicitly launched history-only test process.
     p.terminate();p.wait(timeout=5)

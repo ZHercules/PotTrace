@@ -12,4 +12,19 @@
  <Style TargetType="TabItem"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource WindowBrush}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem"><Border Background="{TemplateBinding Background}" Padding="10,6" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,1,1,0"><ContentPresenter ContentSource="Header"/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource SelectionBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
  <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Padding" Value="6"/></Style>
  <Style TargetType="ComboBox"><Setter Property="Margin" Value="3"/><Setter Property="MinHeight" Value="27"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox"><Grid><ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen,RelativeSource={RelativeSource TemplatedParent},Mode=TwoWay}"><ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/></ControlTemplate></ToggleButton.Template></ToggleButton><ContentPresenter Margin="7,4,25,4" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/><TextBlock Text="▾" HorizontalAlignment="Right" Margin="0,0,8,0" IsHitTestVisible="False"/><Popup Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False"><Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" MinWidth="{Binding ActualWidth,RelativeSource={RelativeSource TemplatedParent}}"><ScrollViewer MaxHeight="240"><ItemsPresenter/></ScrollViewer></Border></Popup></Grid></ControlTemplate></Setter.Value></Setter></Style>
+  <Style x:Key="Surface" TargetType="Border">
+   <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+   <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="8"/>
+   <Setter Property="Padding" Value="14,10"/>
+  </Style>
+  <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+   <Setter Property="FontSize" Value="16"/><Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+ <Style x:Key="TableText" TargetType="TextBlock">
+  <Setter Property="Margin" Value="8,0,4,0"/>
+  <Setter Property="VerticalAlignment" Value="Center"/>
+  <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+  <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+ </Style>
 </ResourceDictionary>
