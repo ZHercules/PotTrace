@@ -52,8 +52,10 @@ public partial class MainWindow:Window
         var active=host.Writer.Activity.LastOrDefault();if(active is not null)CurrentText.Text+="  ·  "+MainViewModel.SessionStatus(active);
     }
     private void SetDetailed(bool value){vm.DetailedView=value;DetailPanel.Visibility=value?Visibility.Visible:Visibility.Collapsed;MovieColumn.Width=new GridLength(value?4:1,GridUnitType.Star);DetailColumn.Width=new GridLength(value?6:0,GridUnitType.Star);}
-    private void SimpleClick(object sender,RoutedEventArgs e)=>SetDetailed(false);
-    private void DetailedClick(object sender,RoutedEventArgs e)=>SetDetailed(true);
+    private void ViewChanged(object sender,RoutedEventArgs e)
+    {
+        if(DetailPanel is not null)SetDetailed(sender==DetailedChoice);
+    }
     private async void RefreshClick(object sender,RoutedEventArgs e){page=0;await Run(RefreshAsync);}
     private async void SearchKey(object sender,System.Windows.Input.KeyEventArgs e){if(e.Key==Key.Enter){page=0;await Run(RefreshAsync);}}
     private async void PreviousClick(object sender,RoutedEventArgs e){page=Math.Max(0,page-1);await Run(RefreshAsync);}
@@ -103,7 +105,16 @@ public partial class MainWindow:Window
         var match=Segments.Items.Cast<SegmentRow>().FirstOrDefault(x=>x.Record.StartMs<hot.Record.EndMs&&x.Record.EndMs>hot.Record.StartMs);
         if(match is not null){Segments.SelectedItem=match;Segments.ScrollIntoView(match);}
     }
-    private void ZoomChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(Timeline is not null)Timeline.Width=Math.Max(360,DetailPanel.ActualWidth-22)*e.NewValue;}
+    private void ZoomChanged(object sender,RoutedPropertyChangedEventArgs<double> e)=>ResizeTimeline();
+    private void TimelineScrollChanged(object sender,ScrollChangedEventArgs e)
+    {
+        if(e.ViewportWidthChange!=0)ResizeTimeline();
+    }
+    private void ResizeTimeline()
+    {
+        if(Timeline is not null && TimelineViewport.ViewportWidth>0)
+            Timeline.Width=TimelineViewport.ViewportWidth*Zoom.Value;
+    }
     private async void PauseClick(object sender,RoutedEventArgs e)=>await Run(async ()=>{await host.SaveSettingsAsync(host.Settings with {Enabled=true,RecordingPaused=host.Settings.Enabled&&!host.Settings.RecordingPaused});UpdateStatus();});
     private void SettingsClick(object sender,RoutedEventArgs e){new SettingsWindow(host){Owner=this}.ShowDialog();UpdateStatus();}
     private void RulesClick(object sender,RoutedEventArgs e)=>MessageBox.Show(this,"当前影片停留严格超过 10 秒才计为一次打开；暂停只增加停留。\n累计时长为实际播放经过时间，重复观看重复累计。\n详细片段必须连续实际播放超过 5 秒，暂停、跳转、失联会截断；连续变速作为片段内事件记录。\n同名（含扩展名、忽略大小写）归并影片；热度按实际来源分别计算。\n采集模式从下一会话生效；旧精简记录没有明细。\n采样存在边界误差，不提供帧级精度。","统计规则 · v1");

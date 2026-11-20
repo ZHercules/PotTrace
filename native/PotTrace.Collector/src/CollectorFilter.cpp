@@ -17,15 +17,44 @@ namespace {
 using Microsoft::WRL::ComPtr;
 using namespace pottrace;
 std::string utf8(std::wstring_view s){int n=WideCharToMultiByte(CP_UTF8,0,s.data(),static_cast<int>(s.size()),nullptr,0,nullptr,nullptr);std::string result(n,'\0');if(n)WideCharToMultiByte(CP_UTF8,0,s.data(),static_cast<int>(s.size()),result.data(),n,nullptr,nullptr);return result;}
-std::string filterName(IBaseFilter*){return {};}
+std::string filterName(IBaseFilter* filter){
+ FILTER_INFO info{};if(FAILED(filter->QueryFilterInfo(&info)))return {};
+ if(info.pGraph)info.pGraph->Release();return utf8(info.achName);
+}
 std::string currentFile(IFileSourceFilter* source,HRESULT& hr){LPOLESTR file=nullptr;hr=source->GetCurFile(&file,nullptr);std::unique_ptr<OLECHAR,decltype(&CoTaskMemFree)> owned(file,CoTaskMemFree);return SUCCEEDED(hr)&&file?utf8(file):std::string();}
 #include "ConnectedRenderer.h"
 #include "RendererMeasurement.h"
+
+struct PlayerWindows {HWND main=nullptr;bool ambiguous=false;};
+BOOL CALLBACK locateMainWindow(HWND window,LPARAM data){
+ DWORD pid=0;GetWindowThreadProcessId(window,&pid);
+ wchar_t cls[80]{};
+ if(pid!=GetCurrentProcessId()||!GetClassNameW(window,cls,80)||wcscmp(cls,L"PotPlayer64")!=0)return TRUE;
+ auto& found=*reinterpret_cast<PlayerWindows*>(data);
+ if(found.main){found.ambiguous=true;return FALSE;}
+ found.main=window;return TRUE;
+}
+bool playerObservedStart(const RendererMeasurement& r){
+ if(!r.consistent||r.after!=State_Running||r.position<0||r.position>1000000||r.duration<=0)return false;
+ PlayerWindows found;EnumWindows(locateMainWindow,reinterpret_cast<LPARAM>(&found));
+ if(!found.main||found.ambiguous)return false;
+ auto query=[&](WPARAM key,int64_t& value){
+  DWORD_PTR result=0;
+  if(!SendMessageTimeoutW(found.main,WM_USER,key,0,SMTO_BLOCK|SMTO_ABORTIFHUNG,8,&result))return false;
+  value=static_cast<LONG_PTR>(result);return true;
+ };
+ int64_t before=0,position=-1,duration=-1,after=0;
+ return query(0x5006,before)&&before==2&&query(0x5004,position)&&position>=0&&position<=100&&
+        std::abs(position-r.position/10000)<=65&&query(0x5002,duration)&&std::abs(duration-r.duration/10000)<=50&&
+        query(0x5006,after)&&after==2&&GetTickCount64()-r.begin<=50;
+}
 
 struct Service {
  CollectorConfig config;CollectorSink sink;CaptureGate gate;CollectorRuntime runtime;
  std::filesystem::path healthFile,moduleFile;uint64_t healthAt=0;
  std::atomic<uint64_t> rejected{0};
+ // String literals have process lifetime. Multiple graphs may report here.
+ std::atomic<const char*> lastBindResult{"not_attempted"};
  static DWORD WINAPI Manager(void* value){
   auto& s=*static_cast<Service*>(value);
   try{s.config=LoadCollectorConfig(s.moduleFile);auto folder=s.moduleFile.parent_path();if(ReadCollectorIni((folder/L"pottrace-collector.ini").wstring(),L"PotTrace",L"Diagnostics")==L"1")s.healthFile=folder/L"collector-health.json";}
@@ -45,10 +74,15 @@ struct Service {
    bool plugin=IsPlayerPluginEnabled(config)&&!(status&2);
    bool started=policy.allowed()&&plugin&&sink.Start(config);
    gate.update(policy,started&&plugin&&!(status&8));
+   if(config.registryProfile)sink.EnableConfirmation(gate.allowed());
    if(!gate.allowed())runtime.SuspendCapture(GetTickCount64());
    if(!healthFile.empty()&&GetTickCount64()-healthAt>=250){
     healthAt=GetTickCount64();auto h=runtime.Snapshot();auto temp=healthFile;temp+=L".tmp";
-    {std::ofstream f(temp,std::ios::binary|std::ios::trunc);f<<"{\"at\":"<<healthAt<<",\"workers\":"<<h.workerCount<<",\"slots\":"<<h.occupiedSlots<<",\"failures\":"<<h.failures<<",\"rejected\":"<<rejected<<",\"lost\":"<<sink.lost<<",\"enabled\":"<<(gate.allowed()?"true":"false")<<",\"bridgeState\":"<<status<<"}";}
+    uint64_t timing[3]{};sink.ReadTiming(timing);
+    {std::ofstream f(temp,std::ios::binary|std::ios::trunc);f<<"{\"at\":"<<healthAt<<",\"workers\":"<<h.workerCount<<",\"slots\":"<<h.occupiedSlots<<",\"failures\":"<<h.failures<<",\"rejected\":"<<rejected<<",\"lost\":"<<sink.lost<<",\"enabled\":"<<(gate.allowed()?"true":"false")<<",\"bridgeState\":"<<status
+      <<",\"pluginPermitsCapture\":"<<(plugin?"true":"false")<<",\"policyAllowed\":"<<(policy.allowed()?"true":"false")
+      <<",\"firstCurrentCallback\":"<<timing[0]<<",\"firstRunningGraph\":"<<timing[1]<<",\"firstConfirmedGraph\":"<<timing[2]
+      <<",\"lastBindResult\":\""<<lastBindResult.load(std::memory_order_relaxed)<<"\"}";}
     MoveFileExW(temp.c_str(),healthFile.c_str(),MOVEFILE_REPLACE_EXISTING);
    }
   }catch(...){gate.update({},false);}
@@ -65,18 +99,20 @@ struct Watch final : CollectorWork {
  HWND window=nullptr;std::atomic<bool> initialized{false};
  EffectiveRate effectiveRate;ClockContinuity continuity;ComPtr<IUnknown> heldClock;std::string ratePath;
  uint64_t rateRevision=0;TerminalDelivery terminal;
+ DWORD metadataInterval=25;
+ DWORD MetadataInterval() const noexcept override{return metadataInterval;}
  Watch(IPin* inputPeer,IPin* outputPeer,IFilterGraph* owner):upstream(inputPeer),downstream(outputPeer),graph(owner){}
  void Admitted() noexcept override {control->onClose=retireBinding;if(service().gate.allowed())control->binding=service().sink.next++;}
- bool Bind(){
-  PIN_INFO info{};if(FAILED(upstream->QueryPinInfo(&info))||!info.pFilter)return false;
+ const char* Bind(){
+  PIN_INFO info{};if(FAILED(upstream->QueryPinInfo(&info))||!info.pFilter)return "upstream_pin_unavailable";
   ComPtr<IBaseFilter> owner;owner.Attach(info.pFilter);ComPtr<IFileSourceFilter> candidate;
-  if(FAILED(owner.As(&candidate)))return false;
-  auto connected=followVideoPeer(downstream.Get());
-  if(connected.result!=S_OK||!connected.filter||!connected.window)return false;
+  if(FAILED(owner.As(&candidate)))return "file_source_unavailable";
+  auto connected=followVideoPeer(downstream.Get(),service().config.registryProfile);
+  if(connected.result!=S_OK||!connected.filter)return "connected_renderer_window_unavailable";
   DWORD pid=0;GetWindowThreadProcessId(connected.window,&pid);wchar_t cls[80]{};GetClassNameW(GetAncestor(connected.window,GA_ROOT),cls,80);
-  if(pid!=GetCurrentProcessId()||wcscmp(cls,L"PotPlayer64")!=0)return false;
-  ComPtr<IMediaSeeking> position;if(FAILED(graph.As(&position)))return false;
-  source=candidate;renderer=connected.filter;window=connected.window;seeking=position;initialized=true;return true;
+  if(connected.window&&(pid!=GetCurrentProcessId()||wcscmp(cls,L"PotPlayer64")!=0))return "renderer_window_owner_mismatch";
+  ComPtr<IMediaSeeking> position;if(FAILED(graph.As(&position)))return "seeking_unavailable";
+  source=candidate;renderer=connected.filter;window=connected.window;seeking=position;control->windowVerified=window!=nullptr;initialized=true;return window?"bound":"requires_playback_path";
  }
  void Observe(bool metadata) override {
   auto& s=service();
@@ -88,11 +124,18 @@ struct Watch final : CollectorWork {
   if(!metadata){
    if(!control->binding){auto ticket=control->fence.capture();control->fence.publish(ticket,[&]{if(s.gate.allowed()&&!control->binding)control->binding=s.sink.next++;});}
    if(control->retired||!control->binding)return;
-   if(!initialized&&!Bind())return;
+   if(!initialized)s.lastBindResult.store(Bind(),std::memory_order_relaxed);
   }
   if(!initialized)return;auto ticket=control->fence.capture();if(!ticket.allowed)return;
   const auto binding=control->binding.load(),revision=s.gate.revision();if(!binding)return;
-  auto r=ReadRendererMeasurement(renderer.Get(),source.Get(),seeking.Get(),window,metadata);
+  auto r=ReadRendererMeasurement(renderer.Get(),source.Get(),seeking.Get(),window,metadata,!window);
+  const bool foregroundStart=metadata&&!window&&playerObservedStart(r);
+  if(metadata){
+   // Tighter sampling around zero and EOF bounds the unobserved first/last
+   // interval, without increasing the steady-state cost for long movies.
+   metadataInterval=!window&&r.consistent&&r.after==State_Running&&
+    (r.position<20000000LL||r.duration-r.position<15000000LL)?8:25;
+  }
   EffectiveRate nextRate;EffectiveRateResult effective;
   if(metadata){
    nextRate=effectiveRate;
@@ -109,8 +152,9 @@ struct Watch final : CollectorWork {
    if(metadata){effectiveRate.swap(nextRate);ratePath=r.path;}
    if(!r.consistent)return;
    PotTraceGraphPacket p;p.kind=metadata?1:0;p.qualified=1;p.binding=binding;p.generation=ticket.generation;p.begin=r.begin;p.at=r.end;p.state=r.after;
+   if(!window){p.version=3;p.qualified=2;}
    p.path=r.path.data();p.pathLength=static_cast<uint32_t>(r.path.size());p.position=metadata?r.position/10000:-1;p.duration=metadata?r.duration/10000:-1;
-   p.rate=effective.value.value_or(1);p.rateFlags=2|(effective.value?1:0)|(effective.changed?4:0)|(effective.discontinuity?8:0);p.rateWindowFrom=effective.from;
+   p.rate=effective.value.value_or(1);p.rateFlags=2|(effective.value?1:0)|(effective.changed?4:0)|(effective.discontinuity?8:0)|(foregroundStart?16:0);p.rateWindowFrom=effective.from;
    submitted=s.sink.Send(p)==0;
   });
   if(metadata&&submitted){continuity.submitted(reinterpret_cast<uintptr_t>(r.clockIdentity.Get()),true);heldClock=r.clockIdentity;}
@@ -141,7 +185,9 @@ public:
  STDMETHODIMP JoinFilterGraph(IFilterGraph* graph,LPCWSTR name) override{CAutoLock lock(m_pLock);if(!graph)Retire();return CTransInPlaceFilter::JoinFilterGraph(graph,name);}
  HRESULT NewSegment(REFERENCE_TIME start,REFERENCE_TIME stop,double rate) override{
   auto held=lease.load();auto change=(held?held->fence:*idle).changing();auto& s=service();
-  if(held&&s.gate.allowed()){PotTraceGraphPacket p;p.kind=2;p.qualified=1;p.binding=held->binding;p.generation=held->fence.capture().generation;p.begin=p.at=GetTickCount64();p.position=start/10000;s.sink.Send(p);}
+  if(held&&s.gate.allowed()){PotTraceGraphPacket p;p.kind=2;p.qualified=1;p.binding=held->binding;p.generation=held->fence.capture().generation;p.begin=p.at=GetTickCount64();p.position=start/10000;
+   if(s.config.registryProfile&&!held->windowVerified){p.version=3;p.qualified=2;}
+   s.sink.Send(p);}
   return CTransInPlaceFilter::NewSegment(start,stop,rate);
  }
 };

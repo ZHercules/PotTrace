@@ -1,6 +1,6 @@
 # 正式采集器开发增量
 
-`PotTrace.Collector.ax` 是独立于诊断探针的 x64 DirectShow 视频透传滤镜，使用私有 CLSID `{A5092F25-09C8-46EB-9138-638E3C0B4287}`。目前仅供隔离验证，未进入安装包，也未完成稳定版验收。不要运行 `regsvr32`；全局注册入口主动拒绝注册。
+`PotTrace.Collector.ax` 是独立于诊断探针的 x64 DirectShow 视频透传滤镜，使用私有 CLSID `{A5092F25-09C8-46EB-9138-638E3C0B4287}`。开发预览包自 0.1.0-preview.4 起包含此 AX。稳定版验收仍在进行。不要运行 `regsvr32`；全局注册入口主动拒绝注册。
 
 ## 构建
 
@@ -20,7 +20,7 @@ PlayerIni=D:\isolated\player\PotPlayerMini64.ini
 Diagnostics=0
 ```
 
-三个路径必须是本地绝对路径；PlayerIni 必须对应当前进程可执行文件。Bridge 邻接的 `pottrace-bridge.ini` 须含 `SourceMode=DirectShow`、`CaptureBackend=Collector`，并配置隔离宿主、数据目录与 channel。测试工具负责生成私有滤镜覆盖配置，退出后恢复副本原文件；安装及所有权回退机制仍属后续任务。
+三个路径必须是本地绝对路径；PlayerIni 必须对应当前进程可执行文件。Bridge 邻接的 `pottrace-bridge.ini` 须含 `SourceMode=DirectShow`、`CaptureBackend=Collector`，并配置隔离宿主、数据目录与 channel。测试工具负责生成私有滤镜覆盖配置，退出后恢复副本原文件；快速安装器登记滤镜，卸载时检查其内容并保留其他滤镜。
 
 唯一采集授权文件为 UTF-8 `capture-policy.json`：
 
@@ -38,6 +38,8 @@ Diagnostics=0
 - 控制线程约每 25ms 检查策略及 PotPlayer 的真实扩展勾选状态；操作系统调度和文件访问可能增加延迟，因此这不是用户操作到截止时间的精度承诺。关闭期间不回填；重新启用从新观察开始。主动退出宿主抑制当前播放器实例重启宿主；下次启动播放器重新按授权加载。
 - 暂停影片计入已确认停留，不增加实播时长。队列中的文件不作为当前影片。未知载入区间、复合查询超过 50ms 或来源不一致时不补算。
 - `Diagnostics=1` 写固定大小的 `collector-health.json` 与临时文件，包含时间、线程/占用槽、异常/拒绝/丢失计数、开关状态，不写影片路径。默认关闭；这不是用户可见的完整质量诊断界面。
+
+在指定的 1.7.23172.0 注册表配置下，内置 D3D11 终端可以使用脚本提供的当前影片完整路径确认来源。诊断中的 `firstRunningGraph`、`firstCurrentCallback`、`firstConfirmedGraph` 是同一进程单调时钟上的首次时间戳，零表示尚未观察到。播放后暂停才交付的回调也可与此前的图内样本核对。桥接器最多保留一条候选来源的 20 秒、2048 条观测；跨来源、寻址、策略切换或证据不足时放弃补计。累计播放取自可确认的图内采样时刻，回调交付时间仅用于身份判断。
 
 ## 验证
 

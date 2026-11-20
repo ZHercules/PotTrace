@@ -42,7 +42,15 @@ public partial class App
             if(!instance.IsOwner)
             {
                 if(!e.Args.Contains("--background"))
-                {using var pipe=new NamedPipeClientStream(".",instance.PipeName,PipeDirection.InOut,PipeOptions.Asynchronous);using var ct=new CancellationTokenSource(3000);await pipe.ConnectAsync(ct.Token);await pipe.WriteAsync(FrameCodec.Encode(new(){Type="Control",Command=e.Args.Contains("--exit")?"Exit":"Show"}),ct.Token);}
+                {
+                    using var pipe=new NamedPipeClientStream(".",instance.PipeName,PipeDirection.InOut,PipeOptions.Asynchronous);
+                    using var ct=new CancellationTokenSource(3000);
+                    await pipe.ConnectAsync(ct.Token);
+                    await pipe.WriteAsync(FrameCodec.Encode(new(){Type="Control",Command=e.Args.Contains("--exit")?"Exit":"Show"}),ct.Token);
+                    // The server checks the caller's live PID before reading the command
+                    // and closes this one-shot connection after dispatch.
+                    await FrameCodec.ReadAsync(pipe,ct.Token);
+                }
                 Shutdown();return;
             }
             if(e.Args.Contains("--exit")){Shutdown();return;}
@@ -54,7 +62,6 @@ public partial class App
                 Settings=Settings with {Enabled=policy.Enabled,RecordingPaused=policy.RecordingPaused};
             }
             ApplyTheme();
-            hotkey=new(ShowHistory);hotkey.Register(Settings.HotKeyModifiers,Settings.HotKey);
             Database=await Database.CreateAsync(Path.Combine(dataDirectory,"pottrace.db"));
             Writer=new(Database,new SessionTracker(Settings.Mode));Writer.SetNextCaptureMode(Settings.Mode);
             if(Settings.RecordingPaused||!Settings.Enabled)await Writer.SetCaptureEnabledAsync(false,default);
@@ -71,6 +78,7 @@ public partial class App
             },async (id,ct)=>{sources.Forget(id);await Writer.DisconnectAsync(id,ct);},command=>
             {Dispatcher.BeginInvoke(new Action(async ()=>{if(command=="Show")ShowHistory();else if(command=="Exit")await StopAsync(true);}));return Task.CompletedTask;});
             server.Error+=ex=>{Status="采集连接异常，请查看诊断日志";Log(ex);};server.Start();
+            hotkey=new(ShowHistory);hotkey.Register(Settings.HotKeyModifiers,Settings.HotKey);
             tray=new(){Icon=System.Drawing.SystemIcons.Application,Text="PotTrace 播放统计",Visible=true};
             var menu=new System.Windows.Forms.ContextMenuStrip();menu.Items.Add("播放统计",null,(_,_)=>ShowHistory());
             menu.Items.Add("暂停 / 恢复统计",null,async (_,_)=>

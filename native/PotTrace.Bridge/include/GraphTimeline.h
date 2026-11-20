@@ -9,9 +9,13 @@
 #include <algorithm>
 namespace pottrace {
 enum class GraphState { Unknown=-1, Stopped=0, Paused=1, Playing=2 };
-enum class GraphFactKind { Ready, Sample, Segment, Closed, Gap };
+enum class GraphFactKind { Ready, Sample, Segment, Closed, Gap, Withdrawn };
 struct GraphFact {
  GraphFactKind kind=GraphFactKind::Ready;
+ uint64_t identityEpoch=0;
+ bool confirmationRequired=false,foregroundStart=false;
+ uint64_t policyEpoch=0;
+ int64_t witnessFirst=-1,witnessNext=-1,witnessDuration=-1,witnessStartDuration=-1;
  uint64_t binding=0,generation=0,begin=0,at=0;
  std::string path;
  GraphState state=GraphState::Unknown;
@@ -29,7 +33,8 @@ struct GraphTransition {
 // Single consumer. Facts have already passed connection/lifecycle proof; this
 // reducer never obtains identity from a title, command line or delayed script.
 class GraphTimeline {
- std::set<uint64_t> live,retired;
+ std::map<uint64_t,uint64_t> live;
+ std::set<uint64_t> retired;
  std::map<uint64_t,GraphFact> streamOrigins;
  uint64_t binding=0,epoch=0,lastFact=0,lastHealth=0,lastState=0,generation=0,publishedAt=0,retiredThrough=0;
  bool active=false,exhausted=false,healthKnown=false;
@@ -63,6 +68,14 @@ public:
    return out;
   }
   if(f.binding<=retiredThrough||retired.count(f.binding)||!f.qualified||f.at<f.begin||f.at<publishedAt)return out;
+  if(f.kind==GraphFactKind::Withdrawn){
+   live.erase(f.binding);streamOrigins.erase(f.binding);
+   if(active&&binding==f.binding){finishPause(out);out.push_back(emit("MediaClosed",f.at,stale(f.at)));active=false;}
+   return out;
+  }
+  if(f.identityEpoch&&f.kind!=GraphFactKind::Ready&&
+     !(f.kind==GraphFactKind::Segment&&!live.count(f.binding))&&
+     (!live.count(f.binding)||live.at(f.binding)!=f.identityEpoch))return out;
   if(f.kind==GraphFactKind::Segment||f.kind==GraphFactKind::Gap){
    if(active&&binding==f.binding&&(f.at<lastHealth||f.generation<generation))return out;
    if(f.kind==GraphFactKind::Gap)streamOrigins.erase(f.binding);
@@ -84,13 +97,18 @@ public:
    if(origin!=streamOrigins.end()&&f.at>=origin->second.at&&f.generation>=origin->second.generation){
     // A native stream origin does not identify media or open a session. Only
     // the first subsequent qualified source/readiness observation can use it.
-    streamOrigin=origin->second.position;streamOrigins.erase(origin);
+    if(origin->second.identityEpoch==f.identityEpoch)streamOrigin=origin->second.position;
+    streamOrigins.erase(origin);
    }
    if(f.state==GraphState::Stopped){
     if(active&&binding==f.binding){finishPause(out);out.push_back(emit("MediaClosed",f.at,stale(f.at)));active=false;}
     live.erase(f.binding);return out;
    }
-   live.insert(f.binding);
+   auto previous=live.find(f.binding);
+   if(active&&binding==f.binding&&previous!=live.end()&&previous->second!=f.identityEpoch){
+    finishPause(out);out.push_back(emit("MediaClosed",f.at,stale(f.at)));active=false;
+   }
+   live[f.binding]=f.identityEpoch;
    if(live.size()>1){
     if(active){finishPause(out);out.push_back(emit("MediaClosed",std::max(lastFact,f.at),true));active=false;}
     return out;

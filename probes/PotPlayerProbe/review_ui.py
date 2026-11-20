@@ -36,7 +36,7 @@ try:
     time.sleep(1)
     dest=ROOT/'artifacts/ui-review';dest.mkdir(parents=True,exist_ok=True)
     capture(win,dest/('simple-'+theme.lower()+'.png'))
-    win.child_window(title='详细',control_type='Button').invoke();time.sleep(1)
+    win.child_window(title='详细',control_type='RadioButton').select();time.sleep(1)
     win.child_window(title='观看会话',control_type='Text').wait('visible',timeout=5)
     capture(win,dest/('detailed-'+theme.lower()+'.png'))
     print('Captured simple and detailed windows')

@@ -1,5 +1,6 @@
 #include "GraphTimeline.h"
 #include "TerminalDelivery.h"
+#include "PlaybackWarmup.h"
 #include <iostream>
 #include <stdexcept>
 using namespace pottrace;
@@ -8,6 +9,54 @@ GraphFact ready(uint64_t binding,std::string path,uint64_t at,GraphState state=G
  GraphFact f;f.binding=binding;f.path=std::move(path);f.at=f.begin=at;f.state=state;f.qualified=true;return f;
 }
 int main(){try{
+ PlaybackWarmup warm;
+ auto observePoint=[&](uint64_t at,int64_t pos,uint64_t epoch){
+  auto f=ready(1,"C:/one/episode.mp4",at,GraphState::Playing);f.kind=GraphFactKind::Sample;
+  f.position=pos;f.duration=40000;f.identityEpoch=epoch;f.confirmationRequired=true;
+  if(epoch){f.witnessFirst=10;f.witnessNext=1010;f.witnessDuration=40000;}
+  return warm.accept(f);
+ };
+ for(int ms=10;ms<1010;ms+=25)check(observePoint(1000+ms,ms,0).empty(),"unconfirmed preload published");
+ auto recovered=observePoint(2010,1010,1);
+ check(recovered.size()>2&&recovered[0].kind==GraphFactKind::Ready&&recovered[0].at==1010&&recovered.back().at==2010,"two named playback positions did not recover measured interval");
+ warm.reset();
+ for(int ms=10;ms<1010;ms+=25)observePoint(1000+ms,ms,0);
+ auto seek=ready(1,"",2009);seek.kind=GraphFactKind::Segment;seek.confirmationRequired=true;warm.accept(seek);
+ check(observePoint(2010,1010,1).size()<=1,"history spanned a seek");
+ for(auto interruption:{GraphFactKind::Closed,GraphFactKind::Gap}){
+  warm.reset();
+  for(int ms=10;ms<1010;ms+=25)observePoint(1000+ms,ms,0);
+  auto barrier=ready(1,"C:/one/episode.mp4",2009,GraphState::Paused);
+  barrier.kind=interruption;barrier.confirmationRequired=true;warm.accept(barrier);
+  check(observePoint(2010,1010,1).size()<=1,"paused or retired graph recovered as playing");
+ }
+ warm.reset();
+ for(int ms=10;ms<1010;ms+=25)observePoint(1000+ms,ms,0);
+ auto sameName=ready(2,"C:/two/episode.mp4",2010,GraphState::Playing);
+ sameName.confirmationRequired=true;sameName.identityEpoch=2;sameName.witnessFirst=10;sameName.witnessNext=1010;sameName.witnessDuration=40000;
+ auto other=warm.accept(sameName);
+ check(other.size()==1&&other.front().path==sameName.path,"same-name confirmed file inherited queued graph history");
+ warm.reset();
+ for(int ms=10;ms<7010;ms+=25)observePoint(1000+ms,ms,0);
+ auto paused=ready(1,"C:/one/episode.mp4",8010,GraphState::Paused);paused.confirmationRequired=true;paused.generation=1;
+ for(int ms=0;ms<4400;ms+=25){
+  paused.at=paused.begin=8010+ms;paused.kind=GraphFactKind::Ready;warm.accept(paused);
+  paused.kind=GraphFactKind::Sample;paused.position=7010;paused.duration=40000;warm.accept(paused);
+ }
+ paused.at=paused.begin=12410;paused.identityEpoch=1;paused.witnessFirst=10;paused.witnessNext=1010;paused.witnessDuration=40000;
+ auto duringPause=warm.accept(paused);
+ check(duringPause.size()>2&&duringPause.front().at==1010&&duringPause.back().state==GraphState::Paused,"callback delivered during pause lost earlier measured play");
+ for(bool playerRunning:{false,true}){
+  warm.reset();
+  std::vector<GraphFact> recoveredStart;
+  for(int ms=0;ms<=1150;ms+=25){
+   auto p=ready(8,"D:/one/film.mp4",1000+ms,GraphState::Playing);p.kind=GraphFactKind::Sample;
+   p.confirmationRequired=true;p.duration=40000;p.position=ms;p.foregroundStart=playerRunning&&ms==0;
+   if(ms==1150){p.identityEpoch=2;p.witnessFirst=150;p.witnessNext=1150;p.witnessDuration=p.witnessStartDuration=40000;}
+   recoveredStart=warm.accept(p);
+  }
+  check(recoveredStart.front().at==(playerRunning?1000:1150),"unverified or omitted foreground opening observation");
+ }
  GraphTimeline t;
  check(t.apply(ready(1,"C:/not-ready.mp4",90,GraphState::Stopped)).empty(),"stopped connected renderer must not admit a movie");
  auto f=ready(1,"C:/a/movie.mp4",100);f.qualified=false;
@@ -60,6 +109,11 @@ int main(){try{
  check(initialAnchor.apply(initialSegment).empty(),"segment alone admitted a source");
  auto initialReady=ready(40,"C:/a.mp4",20);initialReady.generation=3;
  check(initialAnchor.apply(initialReady).at(0).position==0,"verified initial stream origin lost before first position query");
+ GraphTimeline corroboratedOrigin;initialSegment.identityEpoch=3;initialReady.identityEpoch=3;
+ corroboratedOrigin.apply(initialSegment);
+ check(corroboratedOrigin.apply(initialReady).at(0).position==0,"confirmed graph lost matching native origin");
+ GraphTimeline differentOrigin;initialReady.identityEpoch=4;differentOrigin.apply(initialSegment);
+ check(!differentOrigin.apply(initialReady).at(0).position,"queued source inherited another selection's origin");
  auto waitingPause=[](){GraphTimeline t;t.apply(ready(50,"C:/a.mp4",0,GraphState::Playing));auto p=ready(50,"C:/a.mp4",0,GraphState::Playing);p.kind=GraphFactKind::Sample;p.position=0;p.duration=30000;t.apply(p);t.apply(ready(50,p.path,100));return t;};
  auto changed=waitingPause();auto late=ready(50,"C:/a.mp4",120,GraphState::Playing);late.kind=GraphFactKind::Sample;late.position=120;late.duration=30000;late.generation=1;
  auto changedEvents=changed.apply(late);auto resumed=ready(50,late.path,130,GraphState::Playing);resumed.generation=1;auto later=changed.apply(resumed);changedEvents.insert(changedEvents.end(),later.begin(),later.end());

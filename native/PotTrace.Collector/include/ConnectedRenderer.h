@@ -4,7 +4,7 @@ struct ConnectedRenderer {
 };
 // Follow only the actual connected video stream. Do not choose a renderer from
 // an incomplete graph enumeration or from another disconnected branch.
-ConnectedRenderer followVideoPeer(IPin* firstPeer){
+ConnectedRenderer followVideoPeer(IPin* firstPeer,bool allowPlayerConfirmedRenderer=false){
  ConnectedRenderer found;ComPtr<IPin> current;std::vector<ComPtr<IUnknown>> seen;
  for(int depth=0;depth<16;++depth){
   ComPtr<IPin> peer;if(depth==0){peer=firstPeer;if(!peer)return found;}else{found.result=current->ConnectedTo(peer.GetAddressOf());if(FAILED(found.result))return found;}
@@ -17,10 +17,15 @@ ConnectedRenderer followVideoPeer(IPin* firstPeer){
   if(!window){ComPtr<IVideoWindow> video;if(SUCCEEDED(owner.As(&video))){OAHWND value=0;if(SUCCEEDED(video->get_Owner(&value)))window=reinterpret_cast<HWND>(value);}}
   if(window){found.result=S_OK;found.filter=owner;found.window=window;return found;}
   ComPtr<IEnumPins> pins;found.result=owner->EnumPins(pins.GetAddressOf());if(FAILED(found.result))return found;
-  ComPtr<IPin> pin,next;ULONG fetched=0;int count=0,candidates=0;HRESULT ended=S_OK;
+  ComPtr<IPin> pin,next;ULONG fetched=0;int count=0,candidates=0,outputs=0;HRESULT ended=S_OK;
   while(count++<32&&(ended=pins->Next(1,pin.ReleaseAndGetAddressOf(),&fetched))==S_OK){
-   PIN_DIRECTION direction{};if(FAILED(pin->QueryDirection(&direction))||direction!=PINDIR_OUTPUT)continue;
+   PIN_DIRECTION direction{};found.result=pin->QueryDirection(&direction);if(FAILED(found.result))return found;
+   if(direction!=PINDIR_OUTPUT)continue;++outputs;
    CMediaType media;if(SUCCEEDED(pin->ConnectionMediaType(&media))&&media.majortype==MEDIATYPE_Video){next=pin;++candidates;}
+  }
+  if(allowPlayerConfirmedRenderer&&ended==S_FALSE&&outputs==0&&
+     (found.chain.back()=="Built-in Direct3D11 Video Renderer"||found.chain.back()=="Built-in Direct3D 11 Video Renderer")){
+   found.result=S_OK;found.filter=owner;return found;
   }
   if(ended!=S_FALSE||candidates!=1){found.result=FAILED(ended)?ended:E_UNEXPECTED;return found;}
   current=next;

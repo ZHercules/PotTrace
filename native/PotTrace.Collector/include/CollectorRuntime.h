@@ -9,6 +9,7 @@
 
 namespace pottrace {
 struct GraphControl {
+ std::atomic<bool> windowVerified{false};
  std::atomic<bool> retired{false};std::atomic<uint64_t> binding{0};ObservationFence fence;
  bool (*onClose)(uint64_t,uint64_t) noexcept=nullptr;
  void Close(uint64_t at) noexcept {auto id=binding.exchange(0);if(id&&onClose)onClose(id,at);}
@@ -18,6 +19,7 @@ struct CollectorWork {
  GraphLease control=std::make_shared<GraphControl>();
  virtual void Admitted() noexcept {}
  virtual void Observe(bool metadata)=0;
+ virtual DWORD MetadataInterval() const noexcept{return 25;}
  virtual void Finished(bool) noexcept {}
  virtual ~CollectorWork()=default;
 };
@@ -39,7 +41,7 @@ class CollectorRuntime {
    if(FAILED(initialized)){work->control->retired=true;++s->failures;}
    while(!s->stop&&!work->control->retired){
     try{work->Observe(index%2!=0);}catch(...){++s->failures;work->control->fence.retire();work->control->retired=true;}
-    Sleep(index%2?25:10);
+    Sleep(index%2?work->MetadataInterval():10);
    }
    work->Finished(index%2!=0);
    // A blocking Release retains this slot; no replacement thread is created.

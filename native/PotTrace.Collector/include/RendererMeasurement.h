@@ -9,7 +9,7 @@ struct RendererMeasurement {
  LARGE_INTEGER clockQpc{},clockFrequency{};ComPtr<IUnknown> clockIdentity;
  std::string path,repeated;bool sameClock=false,consistent=false;
 };
-inline RendererMeasurement ReadRendererMeasurement(IBaseFilter* renderer,IFileSourceFilter* source,IMediaSeeking* seeking,HWND window,bool metadata){
+inline RendererMeasurement ReadRendererMeasurement(IBaseFilter* renderer,IFileSourceFilter* source,IMediaSeeking* seeking,HWND window,bool metadata,bool requirePathConfirmation=false){
  RendererMeasurement r;r.begin=GetTickCount64();r.stateBefore=renderer->GetState(0,&r.before);r.path=currentFile(source,r.sourceBefore);
  QueryPerformanceFrequency(&r.clockFrequency);
  if(metadata){r.positionResult=seeking->GetCurrentPosition(&r.position);r.durationResult=seeking->GetDuration(&r.duration);r.rateResult=seeking->GetRate(&r.rate);
@@ -21,6 +21,7 @@ inline RendererMeasurement ReadRendererMeasurement(IBaseFilter* renderer,IFileSo
  }
  r.repeated=currentFile(source,r.sourceAfter);r.stateAfter=renderer->GetState(0,&r.after);r.end=GetTickCount64();
  DWORD pid=0;GetWindowThreadProcessId(window,&pid);wchar_t cls[80]{};GetClassNameW(GetAncestor(window,GA_ROOT),cls,80);
- r.consistent=pid==GetCurrentProcessId()&&wcscmp(cls,L"PotPlayer64")==0&&r.stateBefore==S_OK&&r.stateAfter==S_OK&&r.before==r.after&&r.sourceBefore==S_OK&&r.sourceAfter==S_OK&&!r.path.empty()&&r.path==r.repeated&&r.positionResult==S_OK&&r.durationResult==S_OK&&r.rateResult==S_OK&&r.end-r.begin<=50;
+ const bool eligible=window?(pid==GetCurrentProcessId()&&wcscmp(cls,L"PotPlayer64")==0):requirePathConfirmation;
+ r.consistent=eligible&&r.stateBefore==S_OK&&r.stateAfter==S_OK&&r.before==r.after&&r.sourceBefore==S_OK&&r.sourceAfter==S_OK&&!r.path.empty()&&r.path==r.repeated&&r.positionResult==S_OK&&r.durationResult==S_OK&&r.rateResult==S_OK&&r.end-r.begin<=50;
  return r;
 }
