@@ -2,7 +2,7 @@
 
 面向 **64 位 PotPlayer** 的本地播放统计扩展。记录影片的有效打开次数、实际播放时长、独立观看片段和高频观看区间，并通过与播放器风格协调的 WPF 窗口查看历史。
 
-**当前为开发预览，尚未完成稳定版验收。** 已实现功能经过自动化测试和隔离实播验证；启动回调延迟、实验采集器的兼容性等限制仍需留意。最新已归档验收见 [develop 合并验证](docs/develop-validation.md)。
+**当前为开发预览，尚未完成稳定版验收。** 已实现功能经过自动化测试和隔离实播验证；启动回调延迟、实验采集器的兼容性等限制仍需留意。预览合并验收见 [develop 合并验证](docs/develop-validation.md)，正式采集器的新进展与未通过门槛见 [稳定版开发验收](docs/stable-validation.md)。
 
 [功能](#功能) · [统计规则](#统计规则) · [安装与使用](#安装与使用) · [数据管理](#数据管理) · [开发与构建](#开发与构建) · [验证](#验证) · [已知限制](#已知限制) · [文档导航](#文档导航)
 
@@ -23,10 +23,12 @@
 
 | 路径 | 当前用途 | 注意事项 |
 | --- | --- | --- |
-| AngelScript 回调 + x64 桥接器 | 普通预览安装包的采集方式 | 已观察到首次身份回调延迟，接近 10 秒的有效打开判断可能漏计 |
-| DirectShow 图内采集 | 仅在隔离播放器中验证 | 已接入真实引擎与数据库，实验 AX **未包含在安装包中**，不能直接用于日用播放器 |
+| AngelScript 回调 + x64 桥接器 | 截至 preview.3 的预览包采集方式 | 已观察到首次身份回调延迟，接近 10 秒的有效打开判断可能漏计 |
+| DirectShow 图内采集 | 从 preview.4 起随快速包提供 | 1.7.22859.0 / EVR / INI 已做隔离安装和卸载验证；1.7.23172.0 / 内置 D3D11 / 注册表的日用实测见[稳定版开发验收](docs/stable-validation.md) |
 
-DirectShow 路径已在本机 PotPlayer 26.4.22 / EVR 配置验证首开、换片、自动下一集、重复观看和变速记录。安装普通预览包不会自动切换到这条实验路径，详见 [图内采集验证](docs/graph-ingestion-validation.md)。
+DirectShow 路径已在本机 PotPlayer 26.4.22 / EVR 配置验证首开、换片、自动下一集、重复观看和变速记录。早期脚本预览包使用脚本回调，preview.4 快速包使用正式 AX，详见 [图内采集验证](docs/graph-ingestion-validation.md)。
+
+正式采集器位于 `native/PotTrace.Collector`，包含自动加载、采集启停和生命周期管理。在已验证的无渲染窗口 D3D11 配置中，PotTrace 将播放器回调提供的完整路径与视频流的来源核对，并用带影片位置的回调核对启动阶段的样本。可恢复的范围取决于两侧实际取得的观测。配置和开发验证方式见[采集器说明](native/PotTrace.Collector/README.md)。
 
 ## 统计规则
 
@@ -60,6 +62,10 @@ DirectShow 路径已在本机 PotPlayer 26.4.22 / EVR 配置验证首开、换�
 - 完整预览包为 Windows x64 自包含程序，使用者无需另装 .NET SDK。包内不包含 PotPlayer。
 
 仓库源码不包含构建产物和隔离播放器。已验证的 `0.1.0-preview.2` 是本地预览构建，不能据此认为 GitHub 上已有可下载发行包；可按下文从源码生成安装包。
+
+### 快速安装、卸载与打开统计
+
+解压带有快速入口的预览包，退出 PotPlayer 和 PotTrace，双击 **快速安装.cmd** 选择播放器。首次在 F5 → 扩展功能 → 播放统计勾选 PotTrace。按 **Ctrl+Alt+Shift+H** 可启动统计窗口，后台已运行时也可使用默认的 **Ctrl+Alt+H**。退出两个程序后双击 **快速卸载.cmd**，选择原播放器即可卸载并保留历史。
 
 ### 首次安装
 
@@ -147,7 +153,10 @@ CMake／CTest 找不到时，脚本还会尝试原开发机的固定路径。其
 在仓库根目录执行：
 
 ```powershell
-# Release 应用、桥接器及原生测试
+# 首次准备固定版本的 DirectShow baseclasses（构建时校验源码和许可证哈希）
+python probes/DirectShowProbe/fetch_baseclasses.py
+
+# Release 应用、桥接器、正式采集器及原生测试
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release
 
 # 托管测试、Release 原生测试、安装与升级回滚测试
@@ -159,12 +168,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test.ps1
 ### 生成本地预览包
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish.ps1 -Version '0.1.0-preview.2'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish.ps1 -Version '0.1.0'
 ```
 
-输出为 `artifacts/PotTrace-0.1.0-preview.2-win-x64/` 及同名 ZIP，包含自包含程序、脚本与桥接 DLL、安装／卸载脚本、说明文档和 SHA-256 清单。该命令仅生成本地产物，不创建 GitHub Release，也不安装到播放器。
+输出为 `artifacts/v0.1.0-win11-x64-potplayer-dev.zip` 及同名目录。开发版包含自包含程序、正式 DirectShow AX、桥接 DLL、快速安装和卸载入口、使用说明与 SHA-256 文件清单。
 
-若同版本输出目录已存在，脚本会拒绝覆盖；请换一个版本号或先移走旧产物。实验 DirectShow AX 不参与此打包流程。
+打包脚本会保留已存在的同名发行包。
 
 ## 验证
 
@@ -224,6 +233,7 @@ DirectShow 探针使用生成媒体与独立数据库，限定播放器位于 `o
 ```text
 plugin/                    PotPlayer AngelScript 扩展
 native/PotTrace.Bridge/    C++ x64 桥接器与图事件处理
+native/PotTrace.Collector/ 正式图内采集器（开发预览快速包）
 src/PotTrace.Contracts/    事件协议、帧编码与校验
 src/PotTrace.Core/         会话、计时、片段和热区规则
 src/PotTrace.Storage/      SQLite、查询、事务及备份
@@ -243,6 +253,7 @@ docs/                     使用说明、设计和验收证据
 | 文档 | 内容 |
 | --- | --- |
 | [安装与使用](docs/installation.md) | 安装参数、启用、运行、备份与卸载 |
+| [稳定版开发验收](docs/stable-validation.md) | 正式采集器增量、保留失败及后续发布门槛 |
 | [develop 合并验证](docs/develop-validation.md) | 开发预览的最新归档验收与边界 |
 | [DirectShow 在线统计验证](docs/graph-ingestion-validation.md) | 图内接入、变速修复和实播证据 |
 | [DirectShow 来源验证](docs/directshow-validation.md) | 影片身份、载入边界和渲染器兼容性 |

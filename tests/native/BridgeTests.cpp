@@ -1,9 +1,25 @@
 #include "BridgeSupport.h"
+#include "PlaybackIdentity.h"
 #include <iostream>
 #include <stdexcept>
 void check(bool value,const char* message){if(!value)throw std::runtime_error(message);}
 int main(){try{
  using namespace pottrace;
+ PlaybackIdentity item;
+ const std::string a="D:\\one\\episode.mp4",b="D:\\two\\episode.mp4";
+ item.callback("Open",a,1);check(!item.match(a,2),"disabled identity");
+ item.enable(true);item.callback("Open",a,10);auto first=item.match(a,11);
+ check(first&&!item.match(a,9)&&!item.match(b,11),"preloaded or unconfirmed source");
+ item.callback("Time",a,15);check(item.match(a,16)==first,"heartbeat reopened media");
+ item.callback("Complete",a,20);check(!item.match(a,21),"completed media");
+ item.callback("Time",b,22);auto second=item.match(b,23);check(second&&second!=first&&!item.match(a,23),"seamless transition");
+ item.callback("Close",a,24);check(item.match(b,25)==second,"late close cleared current");
+ item.callback("Open",b,26);check(item.match(b,27)!=second,"same path reopen");
+ item.enable(false);item.enable(true);check(!item.match(b,28),"stale identity after disable");
+ item.callback("Time",b,30,40000,10);item.callback("Time",b,31,40000,1010);
+ auto proof=item.observation(b,32);check(proof.first==10&&proof.next==1010&&proof.epoch!=0,"missing named positions");
+ check(item.observation(a,32).first<0,"other file inherited reported position");
+ item.callback("Open",b,33);check(item.observation(b,34).first<0,"reopen inherited positions");
  check(quote("a\"b\\c\n")=="\"a\\\"b\\\\c\\n\"","JSON escaping");
  Queue q;std::string original="Chinese path copied";check(q.push(original),"enqueue");original="changed";
  check(q.pop()=="Chinese path copied","synchronous copy");

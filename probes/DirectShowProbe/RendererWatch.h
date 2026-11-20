@@ -1,4 +1,5 @@
 #pragma once
+#include "../../native/PotTrace.Collector/include/RendererMeasurement.h"
 // Slow seeking queries must not delay current-source/state observation.
 struct RendererWatch : std::enable_shared_from_this<RendererWatch> {
  std::atomic<bool> stop{false};
@@ -29,25 +30,9 @@ struct RendererWatch : std::enable_shared_from_this<RendererWatch> {
   while(!watch->stop){
    const auto ticket=watch->fence->capture();const auto begin=GetTickCount64();
    try {
-    FILTER_STATE before=State_Stopped,after=State_Stopped;
-    auto stateBefore=watch->renderer->GetState(0,&before);
-    HRESULT sourceBefore=E_FAIL,sourceAfter=E_FAIL;
-    auto path=currentFile(watch->source.Get(),sourceBefore);
-    LONGLONG position=0,duration=0,clockTime=0;double rate=1;HRESULT positionResult=S_OK,durationResult=S_OK,rateResult=S_OK,clockResult=E_NOINTERFACE;
-    LARGE_INTEGER clockQpc{},clockFrequency{};QueryPerformanceFrequency(&clockFrequency);
-    if(metadata){positionResult=watch->seeking->GetCurrentPosition(&position);durationResult=watch->seeking->GetDuration(&duration);rateResult=watch->seeking->GetRate(&rate);}
-    ComPtr<IUnknown> clockIdentity;bool sameClock=false;
-    if(metadata){
-     ComPtr<IReferenceClock> reference,repeatedClock;ComPtr<IUnknown> repeatedIdentity;
-     if(SUCCEEDED(watch->renderer->GetSyncSource(reference.GetAddressOf()))&&reference){reference.As(&clockIdentity);clockResult=reference->GetTime(&clockTime);}
-     QueryPerformanceCounter(&clockQpc);
-     if(SUCCEEDED(watch->renderer->GetSyncSource(repeatedClock.GetAddressOf()))&&repeatedClock)repeatedClock.As(&repeatedIdentity);
-     sameClock=clockIdentity&&clockIdentity.Get()==repeatedIdentity.Get();
-    }
-    auto repeated=currentFile(watch->source.Get(),sourceAfter);auto stateAfter=watch->renderer->GetState(0,&after);
-    auto end=GetTickCount64();DWORD pid=0;GetWindowThreadProcessId(watch->window,&pid);
-    wchar_t cls[80]{};GetClassNameW(GetAncestor(watch->window,GA_ROOT),cls,80);
-    const bool consistent=pid==GetCurrentProcessId()&&wcscmp(cls,L"PotPlayer64")==0&&stateBefore==S_OK&&stateAfter==S_OK&&before==after&&sourceBefore==S_OK&&sourceAfter==S_OK&&!path.empty()&&path==repeated&&positionResult==S_OK&&durationResult==S_OK&&rateResult==S_OK&&end-begin<=50;
+    auto r=ReadRendererMeasurement(watch->renderer.Get(),watch->source.Get(),watch->seeking.Get(),watch->window,metadata);
+    auto [measurementBegin,end,before,after,stateBefore,stateAfter,sourceBefore,sourceAfter,positionResult,durationResult,rateResult,clockResult,position,duration,clockTime,rate,clockQpc,clockFrequency,clockIdentity,path,repeated,sameClock,consistent]=std::move(r);
+    DWORD pid=0;GetWindowThreadProcessId(watch->window,&pid);
     auto& log=logger();
     std::string line="{\"event\":"+pottrace::quote(metadata?"RendererSample":"RendererState")+",\"at\":"+std::to_string(end)+",\"pid\":"+std::to_string(GetCurrentProcessId())+",\"instance\":"+pottrace::quote(watch->instance)+",\"graph\":"+std::to_string(watch->graph)+",\"binding\":"+std::to_string(watch->binding)+",\"generation\":"+std::to_string(ticket.generation)+
      ",\"state\":"+std::to_string(after)+",\"stateBeforeResult\":"+std::to_string(stateBefore)+",\"stateAfterResult\":"+std::to_string(stateAfter)+",\"result\":0,\"inputConnected\":true,\"outputConnected\":true,\"identityInspected\":true,\"inspectionStartedMs\":"+std::to_string(begin)+",\"inspectionEndedMs\":"+std::to_string(end)+

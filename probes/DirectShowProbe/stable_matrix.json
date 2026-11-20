@@ -1,0 +1,9 @@
+{
+  "support": {"player_version": "26.4.22", "architecture": "x64", "renderer": "EVR", "media": "local video"},
+  "gates": {"smoke": ["G2", "G5"], "accuracy": ["G1", "G2"], "faults": ["G3"], "soak": ["G4"], "package": ["G5"], "ui": ["G6"]},
+  "witness_max_uncertainty_ms": 100,
+  "soak_min_hours": 24,
+  "soak_min_switches": 500,
+  "real_sleep_min_cycles": 3,
+  "default_status": "NOT_RUN"
+}

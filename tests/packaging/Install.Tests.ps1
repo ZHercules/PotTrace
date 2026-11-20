@@ -1,5 +1,18 @@
 ﻿$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 Describe 'Windows PowerShell entry points' {
+    It 'verifies pinned DirectShow sources and rejects changed inputs' {
+        $verifier=Join-Path $repo 'scripts\verify-directshow.ps1'
+        (Test-Path -LiteralPath $verifier) | Should Be $true
+        $source=Join-Path $TestDrive 'baseclasses'
+        New-Item -ItemType Directory -Path $source -Force | Out-Null
+        Set-Content (Join-Path $source 'sample.h') 'known source'
+        Set-Content (Join-Path $source 'LICENSE') 'known license'
+        $manifest=Join-Path $TestDrive 'sources.json'
+        @{commit='434f6002bdf9cf9829406c3ff2b33387982d6168';licenseSha256=(Get-FileHash (Join-Path $source 'LICENSE')).Hash;files=@(@{name='sample.h';sha256=(Get-FileHash (Join-Path $source 'sample.h')).Hash})} | ConvertTo-Json -Depth 4 | Set-Content $manifest -Encoding UTF8
+        {& $verifier -SourceDirectory $source -ManifestPath $manifest} | Should Not Throw
+        Add-Content (Join-Path $source 'sample.h') 'changed'
+        {& $verifier -SourceDirectory $source -ManifestPath $manifest} | Should Throw
+    }
     It 'parses installer and publishing scripts without encoding errors' {
         foreach($relative in @('packaging\Install.ps1','packaging\Uninstall.ps1','scripts\publish.ps1')) {
             $tokens=$null;$parseErrors=$null
@@ -52,6 +65,33 @@ Describe 'PotTrace owned installation' {
         Get-Content (Join-Path $data 'pottrace.db') | Should Be 'user history'
         Get-Content (Join-Path $player 'user-file.txt') | Should Be 'keep'
     }
+    It 'restores the preview configuration and removes AX if collector upgrade fails after INI edit' {
+        $installer=Join-Path $repo 'packaging\Install.ps1'
+        & $installer -PotPlayerPath $player -PackagePath $package -InstallRoot $install -DataRoot $data
+        $pluginDir=Join-Path $player 'Extension\Playback\Statistics'
+        $registration=Get-Item (Join-Path $pluginDir 'pottrace-install.json')
+        $bridgeIni=Get-Content (Join-Path $pluginDir 'pottrace-bridge.ini') -Raw
+        $ini=Join-Path $player 'PotPlayerMini64.ini'
+        Set-Content $ini "[Settings]`r`nVolume=42" -Encoding Unicode
+        $iniHash=(Get-FileHash $ini).Hash
+        $ax=Join-Path $package 'plugin\PotTrace.Collector.ax'
+        Set-Content $ax 'fixture'
+        $manifest=Get-Content (Join-Path $package manifest.json) -Raw | ConvertFrom-Json
+        $manifest | Add-Member NoteProperty CaptureBackend DirectShow
+        $manifest.Files+=@{Path='plugin/PotTrace.Collector.ax';Sha256=(Get-FileHash $ax).Hash}
+        $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package manifest.json)
+        Mock Get-Item { @{VersionInfo=@{FileVersion='1, 7, 22859, 0'}} } -ParameterFilter {$LiteralPath -like '*PotPlayer64.dll'}
+        $registration.IsReadOnly=$true
+        try{
+            $failure=$null
+            try{& $installer -PotPlayerPath $player -PackagePath $package -InstallRoot $install -DataRoot $data}catch{$failure=$_.Exception.ToString()}
+            $failure | Should Match 'pottrace-install\.json'
+            (Get-FileHash $ini).Hash | Should Be $iniHash
+            Get-Content (Join-Path $pluginDir 'pottrace-bridge.ini') -Raw | Should Be $bridgeIni
+            Test-Path (Join-Path $pluginDir 'PotTrace.Collector.ax') | Should Be $false
+            Test-Path (Join-Path $pluginDir 'pottrace-collector.ini') | Should Be $false
+        }finally{$registration.IsReadOnly=$false}
+    }
     It 'rejects a changed package before writing any plugin file' {
         Add-Content (Join-Path $package 'plugin\PotTrace.Bridge.dll') 'tampered'
         $failure=$null
@@ -82,5 +122,44 @@ Describe 'PotTrace owned installation' {
             (Get-Content $config -Raw) | Should Be $before
             @(Get-ChildItem (Join-Path $install 'versions') -Filter PotTrace.exe -File -Recurse).Count | Should Be 1
         } finally { (Get-Item $bridge).IsReadOnly=$false }
+    }
+}
+
+Describe 'DirectShow private filter configuration' {
+    . (Join-Path $repo 'packaging\CollectorConfig.ps1')
+    $ax='D:\隔离 播放器\PotTrace.Collector.ax'
+    It 'installs registry filters with typed values and refuses to remove changed entries' {
+        $testKey='Software\PotTrace-FilterTest-'+[guid]::NewGuid().ToString('N')
+        $owner=[Microsoft.Win32.Registry]::CurrentUser
+        $tempKey=$owner.CreateSubKey($testKey)
+        try {
+            New-RegistryCollectorList $tempKey $ax
+            Assert-RegistryCollectorList $tempKey $ax
+            {New-RegistryCollectorList $tempKey $ax} | Should Throw
+            $tempEntry=$tempKey.OpenSubKey('Override\0000',$true)
+            try {
+                $tempEntry.SetValue('Name','changed')
+                {Remove-RegistryCollectorList $tempKey $ax} | Should Throw
+                $tempEntry.SetValue('Name','PotTrace Collector')
+            }finally{$tempEntry.Dispose()}
+            $tempList=$tempKey.OpenSubKey('Override',$true)
+            try{$tempList.DeleteSubKey('0001')}finally{$tempList.Dispose()}
+            Remove-RegistryCollectorList $tempKey $ax
+            $tempKey.SubKeyCount | Should Be 0
+        }finally{$tempKey.Dispose();$owner.DeleteSubKeyTree($testKey)}
+    }
+    It 'restores existing numbered filters and preserves unrelated settings changes' {
+        $before="[Settings]`r`nVolume=30`r`n[Override\0000]`r`nType=1`r`nName=Existing`r`n[Override\0001]`r`nType=-2`r`n[Other]`r`nKey=value`r`n"
+        $installed=Add-CollectorOverride $before $ax
+        (Remove-CollectorOverride ($installed.Replace('Volume=30','Volume=40')) $ax $true) | Should Be ($before.Replace('Volume=30','Volume=40'))
+    }
+    It 'does not remove an externally modified collector or accept duplicate registration' {
+        $installed=Add-CollectorOverride "[Settings]`n" $ax
+        {Remove-CollectorOverride ($installed.Replace('Disabled=0','Disabled=1')) $ax $false} | Should Throw
+        {Add-CollectorOverride $installed $ax} | Should Throw
+    }
+    It 'requires an existing supported INI and refuses an unnumbered override section' {
+        {Read-PlayerIni (Join-Path $TestDrive 'not-present.ini')} | Should Throw
+        {Add-CollectorOverride "[Override\Custom]`nType=-2`n" $ax} | Should Throw
     }
 }

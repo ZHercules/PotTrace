@@ -9,6 +9,9 @@
 #include "../include/BridgeSupport.h"
 #include "../include/GraphTimeline.h"
 #include "../include/GraphPacket.h"
+#include "../include/PlaybackIdentity.h"
+#include "../include/PlaybackWarmup.h"
+#include "../../PotTrace.Collector/include/CollectorConfig.h"
 #include "../include/MpscQueue.h"
 
 namespace {
@@ -28,12 +31,17 @@ std::wstring sid(){HANDLE token=nullptr;if(!OpenProcessToken(GetCurrentProcess()
 struct Raw {std::string text;ULONGLONG at;std::string stamp;};
 struct GraphRaw {GraphFact fact;std::string stamp;uint64_t lossSerial=0;};
 struct Out {long long seq;std::string json;};
+struct GraphRetirement {std::atomic<uint64_t> binding{0};uint64_t at=0;};
 struct State {
- std::atomic<bool> stop=false,suppressed=false;std::mutex rawGate,outGate;
+ PlaybackIdentity item;bool confirmCallbackPath=false;
+ PlaybackWarmup warmup;
+ std::atomic<uint64_t> firstCallback{0},firstReady{0},firstMatched{0};
+ std::atomic<bool> stop=false,suppressed=false,pluginDisabled=false,scriptKnown=false;std::mutex rawGate,outGate;
  std::deque<Raw> raw;size_t rawBytes=0;bool rawGap=false;
  MpscQueue<GraphRaw,4096> graphRaw;std::atomic<size_t> graphBytes{0};GraphTimeline timeline;uint64_t graphEpoch=0;
  std::atomic<uint64_t> graphLoss{0};uint64_t graphHandledLoss=0;
- bool graphMode=false,positionKnown=true,durationKnown=true;
+ GraphRetirement retirements[16];
+ bool graphMode=false,collectorMode=false,positionKnown=true,durationKnown=true;
  bool rateKnown=true,rateEstimated=false;uint64_t rateWindowFrom=0;
  std::deque<Out> outgoing;size_t outBytes=0;bool outGap=false;
  std::wstring folder,exe,data,channel,pipe;std::string instance=guid(),epoch,path;
@@ -152,7 +160,16 @@ void graphTransitions(State& s,const std::vector<GraphTransition>& transitions,c
   emit(s,e.kind,e.at,shiftedUtc(stamp,static_cast<int64_t>(e.at)-static_cast<int64_t>(referenceAt)),e.gap);
  }
 }
-void graphCallback(State& s,const GraphFact& fact,const std::string& stamp){graphTransitions(s,s.timeline.apply(fact),stamp,fact.at);}
+void graphCallback(State& s,const GraphFact& fact,const std::string& stamp){
+ for(const auto& confirmed:s.warmup.accept(fact))
+  graphTransitions(s,s.timeline.apply(confirmed),stamp,fact.at);
+}
+void drainGraphRetirements(State& s){
+ for(auto& slot:s.retirements){auto binding=slot.binding.load();if(!binding||binding==UINT64_MAX)continue;auto at=slot.at;slot.binding=0;
+  GraphFact close;close.kind=GraphFactKind::Closed;close.binding=binding;close.begin=close.at=at;
+  graphCallback(s,close,shiftedUtc(utc(),static_cast<int64_t>(at)-static_cast<int64_t>(GetTickCount64())));
+ }
+}
 void observe(State* p){auto& s=*p;EnumWindows(findWindow,reinterpret_cast<LPARAM>(&s.hwnd));emit(s,"InstanceStarted",GetTickCount64(),utc());ULONGLONG next=0;bool wasSuppressed=false;
  while(!s.stop){
   std::deque<Raw> batch;bool gap=false;{std::lock_guard lock(s.rawGate);batch.swap(s.raw);s.rawBytes=0;gap=s.rawGap;s.rawGap=false;}
@@ -160,9 +177,10 @@ void observe(State* p){auto& s=*p;EnumWindows(findWindow,reinterpret_cast<LPARAM
   for(const auto& raw:batch)callback(s,raw);
   GraphRaw raw;for(int count=0;count<4096&&s.graphRaw.pop(raw);++count){
    s.graphBytes-=sizeof(GraphRaw)+raw.fact.path.size();
-   if(raw.lossSerial!=s.graphHandledLoss){graphTransitions(s,s.timeline.interrupt(raw.fact.at),raw.stamp,raw.fact.at);s.graphHandledLoss=raw.lossSerial;}
+   if(raw.lossSerial!=s.graphHandledLoss){s.warmup.reset();graphTransitions(s,s.timeline.interrupt(raw.fact.at),raw.stamp,raw.fact.at);s.graphHandledLoss=raw.lossSerial;}
    graphCallback(s,raw.fact,raw.stamp);
   }
+  drainGraphRetirements(s);
   if(s.suppressed){std::lock_guard lock(s.outGate);s.outgoing.clear();s.outBytes=0;s.active=false;wasSuppressed=true;Sleep(20);continue;}
   if(wasSuppressed){s.epoch=guid();s.active=false;wasSuppressed=false;}
   auto now=GetTickCount64();if(now>=next){sample(s,now);next=now+(s.playState=="Paused"?500:250);}
@@ -179,17 +197,18 @@ bool transfer(HANDLE pipe,bool write,void* data,DWORD length){
 bool send(HANDLE pipe,std::string json){DWORD len=static_cast<DWORD>(json.size());return transfer(pipe,true,&len,4)&&transfer(pipe,true,json.data(),len);}
 bool receive(HANDLE pipe,std::string& json){DWORD len=0;if(!transfer(pipe,false,&len,4)||len==0||len>1024*1024)return false;json.resize(len);return transfer(pipe,false,json.data(),len);}
 std::wstring ini(const std::wstring& file,const wchar_t* key,const wchar_t* fallback=L""){wchar_t value[32768];GetPrivateProfileStringW(L"PotTrace",key,fallback,value,32768,file.c_str());return value;}
-bool launch(State& s){if(s.exe.empty())return false;std::wstring args=L"\""+s.exe+L"\" --background --channel "+s.channel;if(!s.data.empty())args+=L" --data-dir \""+s.data+L"\"";STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESHOWWINDOW;si.wShowWindow=SW_HIDE;PROCESS_INFORMATION pi{};
+bool launch(State& s){if(s.exe.empty())return false;std::wstring args=L"\""+s.exe+L"\" --background --channel "+s.channel;if(s.collectorMode)args+=L" --collector";if(!s.data.empty())args+=L" --data-dir \""+s.data+L"\"";STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESHOWWINDOW;si.wShowWindow=SW_HIDE;PROCESS_INFORMATION pi{};
  if(!CreateProcessW(s.exe.c_str(),args.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,nullptr,&si,&pi))return false;CloseHandle(pi.hThread);CloseHandle(pi.hProcess);return true;}
 void transport(State* p){auto& s=*p;auto file=s.folder+L"\\pottrace-bridge.ini";s.exe=ini(file,L"HostPath");s.data=ini(file,L"DataDirectory");s.channel=ini(file,L"Channel",L"main");
  if(s.channel.empty()||s.channel.find_first_not_of(L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-")!=std::wstring::npos)return;
  DWORD session=0;ProcessIdToSessionId(GetCurrentProcessId(),&session);s.pipe=L"\\\\.\\pipe\\PotTrace."+sid()+L"."+std::to_wstring(session)+L"."+s.channel;
  std::deque<ULONGLONG> launches;ULONGLONG retryAt=0;
  while(!s.stop){
+  if(s.graphMode&&s.suppressed){Sleep(100);continue;}
   HANDLE pipe=CreateFileW(s.pipe.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_EXISTING,FILE_FLAG_OVERLAPPED|SECURITY_SQOS_PRESENT|SECURITY_IDENTIFICATION,nullptr);
   if(pipe==INVALID_HANDLE_VALUE){auto now=GetTickCount64();while(!launches.empty()&&now-launches.front()>=60000)launches.pop_front();if(!s.suppressed&&now>=retryAt&&launches.size()<3){launch(s);launches.push_back(now);retryAt=now+(launches.size()==1?1000:launches.size()==2?5000:15000);}Sleep(250);continue;}
   std::string response;bool ok=send(pipe,"{\"version\":1,\"type\":\"Hello\",\"instanceId\":"+quote(s.instance)+",\"processId\":"+std::to_string(GetCurrentProcessId())+"}")&&receive(pipe,response);
-  if(ok)s.suppressed=false;
+  if(ok&&!s.graphMode)s.suppressed=false;
   while(ok&&!s.stop){
    DWORD available=0;if(!PeekNamedPipe(pipe,nullptr,0,nullptr,&available,nullptr))break;
    if(available){if(!receive(pipe,response))break;if(response.find("UserExit")!=std::string::npos){s.suppressed=true;break;}}
@@ -216,6 +235,12 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* byte
  HMODULE pinned=nullptr;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(&PotTrace_Initialize),&pinned);
  state=new State;state->folder=std::move(folder);
  state->graphMode=ini(state->folder+L"\\pottrace-bridge.ini",L"SourceMode")==L"DirectShow";
+ state->collectorMode=ini(state->folder+L"\\pottrace-bridge.ini",L"CaptureBackend")==L"Collector";
+ if(state->graphMode&&state->collectorMode){
+  auto config=LoadCollectorConfig(std::filesystem::path(state->folder)/L"PotTrace.Collector.ax");
+  state->confirmCallbackPath=config.valid&&config.registryProfile;
+  if(state->confirmCallbackPath)state->item.enable(ReadCapturePolicy(config.policy).allowed()&&IsPlayerPluginEnabled(config));
+ }
  // CreateThread does not wait for the thread's CRT startup handshake. Waiting
  // here can stall the host's extension dispatch while it holds internal locks.
  bool observeEnabled=true,sendEnabled=true;
@@ -232,20 +257,63 @@ extern "C" __declspec(dllexport) int32_t PotTrace_Initialize(const uint8_t* byte
 }
 extern "C" __declspec(dllexport) int32_t PotTrace_Enqueue(const uint8_t* bytes,uint32_t length){
  auto p=state;if(!p||p->stop||!bytes||length>262144)return -1;
- if(p->graphMode)return 0;
+ if(p->graphMode){
+  std::string_view message(reinterpret_cast<const char*>(bytes),length);
+  if(message.starts_with("Ready\t")){p->pluginDisabled=false;p->scriptKnown=true;}
+  else if(p->confirmCallbackPath&&!p->pluginDisabled&&!p->suppressed){
+   auto kindEnd=message.find('\t');
+   auto second=kindEnd==message.npos?message.npos:message.find('\t',kindEnd+1);
+   auto third=second==message.npos?message.npos:message.find('\t',second+1);
+   if(third!=message.npos){try{
+    const auto now=GetTickCount64();
+    auto number=[](std::string_view field){int64_t n=-1;auto result=std::from_chars(field.data(),field.data()+field.size(),n);return result.ec==std::errc()&&result.ptr==field.data()+field.size()?n:int64_t(-1);};
+    p->item.callback(message.substr(0,kindEnd),message.substr(third+1),now,
+     number(message.substr(kindEnd+1,second-kindEnd-1)),number(message.substr(second+1,third-second-1)));
+    uint64_t unset=0;if(p->item.current(now+1))p->firstCallback.compare_exchange_strong(unset,now);
+   }catch(...){p->item.enable(false);return -1;}}
+  }
+  return 0;
+ }
 #ifdef _DEBUG
  testTrace(L"POTTRACE_TEST_RAW_TRACE",std::string_view(reinterpret_cast<const char*>(bytes),length));
 #endif
  std::lock_guard lock(p->rawGate);if(p->raw.size()>=4096||p->rawBytes+length>8*1024*1024){p->rawGap=true;return 1;}
  p->raw.push_back({std::string(reinterpret_cast<const char*>(bytes),length),GetTickCount64(),utc()});p->rawBytes+=length;return 0;
 }
-extern "C" __declspec(dllexport) int32_t PotTrace_Shutdown(){if(state)state->stop=true;return 0;}
+extern "C" __declspec(dllexport) int32_t PotTrace_Shutdown(){if(state){if(state->graphMode){state->pluginDisabled=true;state->item.enable(false);state->scriptKnown=true;}else state->stop=true;}return 0;}
+extern "C" __declspec(dllexport) void PotTrace_ConfirmationTiming(uint64_t* values){
+ auto p=state;if(!p||!values)return;
+ values[0]=p->firstCallback.load();values[1]=p->firstReady.load();values[2]=p->firstMatched.load();
+}
+extern "C" __declspec(dllexport) uint32_t PotTrace_CollectorState(){auto p=state;return !p?0:(p->graphMode?1u:0u)|(p->pluginDisabled?2u:0u)|(p->suppressed?4u:0u)|(p->stop?8u:0u)|(p->scriptKnown?16u:0u);}
+extern "C" __declspec(dllexport) void PotTrace_EnableItemConfirmation(int enabled){
+ auto p=state;if(p&&p->confirmCallbackPath)p->item.enable(enabled&&!p->pluginDisabled&&!p->suppressed&&!p->stop);
+}
+extern "C" __declspec(dllexport) int32_t PotTrace_RetireGraph(uint64_t binding,uint64_t at){
+ auto p=state;if(!p||p->stop||!p->graphMode||!binding||binding==UINT64_MAX||at>GetTickCount64())return -1;
+ for(auto& slot:p->retirements){uint64_t empty=0;if(slot.binding.compare_exchange_strong(empty,UINT64_MAX)){slot.at=at;slot.binding=binding;return 0;}}
+ ++p->graphLoss;return 1;
+}
 extern "C" __declspec(dllexport) int32_t PotTrace_Graph(const PotTraceGraphPacket* packet){
- auto p=state;if(!p||p->stop||!p->graphMode||!packet||packet->size!=sizeof(PotTraceGraphPacket)||packet->version!=2||packet->kind>4||packet->rateFlags>15||packet->rateWindowFrom>packet->at||packet->pathLength>131072||(!packet->path&&packet->pathLength))return -1;
+ auto p=state;if(!p||p->stop||!p->graphMode||!packet||packet->size!=sizeof(PotTraceGraphPacket)||packet->kind>4||packet->rateFlags>31||packet->rateWindowFrom>packet->at||packet->pathLength>131072||(!packet->path&&packet->pathLength))return -1;
+ const bool corroborate=packet->version==3&&packet->qualified==2&&p->confirmCallbackPath;
+ if(!corroborate&&(packet->version!=2||packet->qualified>1))return -1;
+ if((packet->rateFlags&16)&&(!corroborate||packet->kind!=1||packet->state!=2))return -1;
  auto now=GetTickCount64();if(packet->at>now||packet->begin>packet->at)return -1;
+ if(packet->kind!=3&&(p->pluginDisabled||p->suppressed))return 2;
  try{
   GraphFact f;f.kind=static_cast<GraphFactKind>(packet->kind);f.binding=packet->binding;f.generation=packet->generation;f.begin=packet->begin;f.at=packet->at;f.state=static_cast<GraphState>(packet->state);f.qualified=packet->qualified!=0;
   if(packet->pathLength)f.path.assign(packet->path,packet->pathLength);
+  if(corroborate){
+   auto proof=p->item.observation(f.path,f.begin);f.confirmationRequired=true;f.policyEpoch=proof.policy;
+   f.identityEpoch=f.kind==GraphFactKind::Segment?p->item.current(f.begin):proof.epoch;
+   f.witnessFirst=proof.first;f.witnessNext=proof.next;f.witnessDuration=proof.total;
+   f.witnessStartDuration=proof.startDuration;f.foregroundStart=(packet->rateFlags&16)!=0;
+   if(f.kind==GraphFactKind::Ready&&f.state==GraphState::Playing){
+    uint64_t unset=0;p->firstReady.compare_exchange_strong(unset,f.at);
+    unset=0;if(f.identityEpoch)p->firstMatched.compare_exchange_strong(unset,f.at);
+   }
+  }
   if(packet->position>=0)f.position=packet->position;if(packet->duration>=0)f.duration=packet->duration;f.rate=packet->rate;
   f.rateKnown=(packet->rateFlags&1)!=0;f.estimatedRate=(packet->rateFlags&2)!=0;f.rateChange=(packet->rateFlags&4)!=0;f.rateWindowFrom=packet->rateWindowFrom;
   f.positionDiscontinuity=(packet->rateFlags&8)!=0;
