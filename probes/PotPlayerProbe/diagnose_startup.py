@@ -3,7 +3,8 @@ Only the isolated test player and its temporary script/config are changed.
 """
 import site,sys,struct,json,time,subprocess,os,ctypes,threading
 from pathlib import Path
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+from probe_tools import TOOLS
+site.addsitedir(str(TOOLS / 'python'))
 import win32pipe,win32file,win32api,win32security
 from window_probe import windows,u
 ROOT=Path(__file__).resolve().parents[2]

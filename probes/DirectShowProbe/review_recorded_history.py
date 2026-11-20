@@ -4,7 +4,8 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'probes/PotPlayerProbe'))
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+from probe_tools import TOOLS
+site.addsitedir(str(TOOLS / 'python'))
 from pywinauto import Application
 import win32gui
 from window_probe import windows
@@ -32,7 +33,7 @@ repeat_heat_start=max(s['StartMs'] for s in a_segments[1:])
 repeat_heat_end=min(s['EndMs'] for s in a_segments[1:])
 assert repeat_heat_end-repeat_heat_start>=6000 and a_segments[0]['EndMs']<repeat_heat_start
 si=subprocess.STARTUPINFO();si.dwFlags|=subprocess.STARTF_USESHOWWINDOW;si.wShowWindow=1
-p=subprocess.Popen([str(ROOT/'src/PotTrace.App/bin/Debug/net10.0-windows/PotTrace.exe'),'--show','--data-dir',str(data),'--channel','graphui'+str(time.time_ns())],env=dict(os.environ,DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet'),startupinfo=si)
+p=subprocess.Popen([str(ROOT/'src/PotTrace.App/bin/Debug/net10.0-windows/PotTrace.exe'),'--show','--data-dir',str(data),'--channel','graphui'+str(time.time_ns())],env=dict(os.environ,DOTNET_ROOT=str(TOOLS / 'dotnet')),startupinfo=si)
 report={'evidence':str(evidence),'original_database_modified':False,'passed':False,'repeat_heat_start_ms':repeat_heat_start,'repeat_heat_end_ms':repeat_heat_end}
 def wait_for(check,description):
  deadline=time.monotonic()+15

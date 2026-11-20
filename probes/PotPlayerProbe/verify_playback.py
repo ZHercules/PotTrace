@@ -1,6 +1,7 @@
 """Real seek/repeat/rate/queue/reopen acceptance using generated videos only."""
 import os,time,subprocess,json,sqlite3,ctypes,sys
 from pathlib import Path
+from probe_tools import TOOLS
 from window_probe import windows,u,CB,info
 from make_fixture import make
 ROOT=Path(__file__).resolve().parents[2];DATA=ROOT/('out/playback-data-'+str(time.time_ns()));DATA.mkdir()
@@ -9,7 +10,7 @@ EXE=Path(os.environ.get('POTTRACE_TEST_PLAYER',str(ROOT/'out/player/PotPlayerMin
 APP=Path(os.environ.get('POTTRACE_TEST_APP',str(ROOT/'src/PotTrace.App/bin/Debug/net10.0-windows/PotTrace.exe')))
 (DATA/'settings.json').write_text('{"Mode":1}',encoding='utf-8')
 (EXE.parent/'Extension/Playback/Statistics/pottrace-bridge.ini').write_text('[PotTrace]\nHostPath='+str(APP)+'\nDataDirectory='+str(DATA)+'\nChannel=playback\n',encoding='utf-16')
-env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet',POTTRACE_TEST_EVENT_TRACE=str(DATA/'native-events.jsonl'))
+env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=str(TOOLS / 'dotnet'),POTTRACE_TEST_EVENT_TRACE=str(DATA/'native-events.jsonl'))
 if 'POTTRACE_TEST_APP' in os.environ:env.pop('DOTNET_ROOT',None)
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=5
 def wait_for(fn,seconds=15):

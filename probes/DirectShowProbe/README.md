@@ -65,7 +65,8 @@ python probes/DirectShowProbe/summarize_probe.py out/graph-probe-<id>
 在日用账户离线运行下列命令。它只读取当前用户的 PotPlayer 注册表项，向用户临时目录写入一次试验 INI 并在结束时移除。返回非零表示有差异或原生映射待验证的字段。传入现有 INI 路径还可比较已有副本。输出只包含计数，测试描述只包含源账户 SID、播放器文件摘要和渲染器编号。
 
 ```powershell
-python probes/DirectShowProbe/registry_profile.py 'E:\pot\PotPlayer' --trial --fixture-description out/registry-fixture.json
+$playerDir = Split-Path (Read-Host '请输入 PotPlayerMini64.exe 的完整路径')
+python probes/DirectShowProbe/registry_profile.py $playerDir --trial --fixture-description out/registry-fixture.json
 ```
 
 在**独立 Windows 测试账户的桌面**运行同版本安装实播。为避免复用日用设置，脚本在源账户执行时会提前退出。提供已明示勾选测试扩展的便携夹具和实际发行包。探针只为临时副本调整解压后安装器的版本检查，输出 `out/installed-collector-*/acceptance.json`。测试描述只重现渲染器选择，完整偏好迁移还需单独验证。
@@ -79,7 +80,8 @@ python probes/DirectShowProbe/verify_installed_package.py --package artifacts/Po
 `verify_confirmed_playback.py` 用已安装的正式滤镜和详细统计数据库核对真实播放。它在两个目录生成同名的红、蓝影片。第一轮在 A 暂停期间确认 B 文件已打开，随后直接关闭播放器。第二轮从 A 自然切到 B，将 B 的开头播放两次。报告把屏幕颜色、文件句柄、播放器位置、单调时钟和 SQLite 片段分开保存。加上 `--equal-duration` 可以让两集连时长也相同。
 
 ```powershell
-python probes/DirectShowProbe/verify_confirmed_playback.py --player 'E:\pot\PotPlayer\PotPlayerMini64.exe' --equal-duration
+$playerDir = Split-Path (Read-Host '请输入 PotPlayerMini64.exe 的完整路径')
+python probes/DirectShowProbe/verify_confirmed_playback.py --player (Join-Path $playerDir 'PotPlayerMini64.exe') --equal-duration
 ```
 
 执行前退出播放器并启用详细统计。该命令会在当前 Windows 账户临时开启连续播放，结束时恢复原值并核对渲染器。生成的验收会话留在日用数据库中，文件名以 `confirmed-preload-` 开头。每轮结果单独写入 `out/confirmed-preload-*/result.json`。

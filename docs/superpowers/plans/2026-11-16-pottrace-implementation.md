@@ -33,7 +33,7 @@
 
 ## 开发基线与接入门槛
 
-仓库当前只有 README 与设计文档，没有可复用业务代码。本机注册表记录 PotPlayer 26.04.22.0，目录 `E:\pot\PotPlayer`；其 `Extension/api.txt` 包含 DLL 调用接口，但没有播放统计回调与 HostCreateThread 的明文说明。已发现 Visual Studio Community 2026 和 MSVC；`dotnet --list-sdks` 未返回 SDK，已安装运行时为 .NET 7.0.20。实施前安装 .NET 10 SDK并固定实际可用补丁版本，不复用过时运行时作为开发基线。.NET 10 的 LTS 状态依据 [Microsoft 支持策略](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)。
+仓库当前只有 README 与设计文档，没有可复用业务代码。本机注册表记录 PotPlayer 26.04.22.0，使用日用安装目录；其 `Extension/api.txt` 包含 DLL 调用接口，但没有播放统计回调与 HostCreateThread 的明文说明。已发现 Visual Studio Community 2026 和 MSVC；`dotnet --list-sdks` 未返回 SDK，已安装运行时为 .NET 7.0.20。实施前安装 .NET 10 SDK并固定实际可用补丁版本，不复用过时运行时作为开发基线。.NET 10 的 LTS 状态依据 [Microsoft 支持策略](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)。
 
 任务 1 交付运行时能力矩阵后，才能冻结正式插件入口、回调参数单位及脚本字符串到原生指针的转换。纯统计引擎、数据库及模拟器可使用冻结的内部协议独立开发；接入失败不能用模拟器的通过结果宣布插件可用。若自动初始化或关键播放事件不可用，先修订接入设计，保留用户已确认的自动运行目标。
 

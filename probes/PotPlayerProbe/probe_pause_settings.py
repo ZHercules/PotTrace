@@ -1,10 +1,11 @@
 """Inspect real pause controls and their saved INI keys in an isolated player only."""
 import os, sys, time, site, subprocess, json, argparse
 from pathlib import Path
+from probe_tools import TOOLS
 from window_probe import windows, u
 ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser();parser.add_argument('--inventory',action='store_true');parser.add_argument('--repeat-playlist',action='store_true');args=parser.parse_args()
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+site.addsitedir(str(TOOLS / 'python'))
 from pywinauto import Desktop
 import win32gui, win32con
 EXE=Path(os.environ.get('POTTRACE_TEST_PLAYER',str(ROOT/'out/player/PotPlayerMini64.exe'))).resolve()

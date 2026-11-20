@@ -1,7 +1,8 @@
 """Multi-player, crash restart, user exit and persisted pause against real processes."""
 import site,os,subprocess,time,json,struct,ctypes,sqlite3
 from pathlib import Path
-site.addsitedir(r'D:\codex\PotTrace\.tools\python')
+from probe_tools import TOOLS
+site.addsitedir(str(TOOLS / 'python'))
 import win32file,win32security,win32api,pywintypes
 from window_probe import windows,u
 from make_fixture import make
@@ -10,7 +11,7 @@ APP=ROOT/'src/PotTrace.App/bin/Debug/net10.0-windows/PotTrace.exe'
 PLAYER=ROOT/'out/player/PotPlayerMini64.exe';MEDIA=ROOT/'out/fixtures/lifecycle.avi';make(MEDIA,120)
 (DATA/'settings.json').write_text('{"Mode":1}',encoding='utf-8')
 (ROOT/'out/player/Extension/Playback/Statistics/pottrace-bridge.ini').write_text('[PotTrace]\nHostPath='+str(APP)+'\nDataDirectory='+str(DATA)+'\nChannel=lifecycle\n',encoding='utf-16')
-env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=r'D:\codex\PotTrace\.tools\dotnet')
+env=dict(os.environ,WEBVIEW2_USER_DATA_FOLDER=str(ROOT/'out/player-webview'),DOTNET_ROOT=str(TOOLS / 'dotnet'))
 sid=win32security.ConvertSidToStringSid(win32security.GetTokenInformation(win32security.OpenProcessToken(win32api.GetCurrentProcess(),8),win32security.TokenUser)[0])
 session=ctypes.c_ulong();ctypes.windll.kernel32.ProcessIdToSessionId(os.getpid(),ctypes.byref(session))
 pipe_name=rf'\\.\pipe\PotTrace.{sid}.{session.value}.lifecycle'
